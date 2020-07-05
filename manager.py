@@ -39,8 +39,36 @@ class Storage:
 
 
 class Service:
-	def __init__(self, name: str):
-		self._name = name
+	class Item:
+		def __init__(self, name: str, nominal_volume: int, volume: int, price, rate):
+			self.name = name
+			self.nominal = nominal_volume
+			self.price = price
+			self.rate = rate
+			self.rate_price = (self.rate / self.nominal) * self.price
+			self.volume = volume
+
+		def one_use(self):
+			if self.volume > self.rate:
+				self.volume -= self.rate
+			else:
+				pass  # забрать со склада новую пачку - обновить объем - в случае чего изменить цену и объем пачки
+
+	def __init__(self, name: str, service_price):
+		self.name = name
+		self.service_price = service_price
+		self.cost_price = None
+		self.net_profit = None
+		self.service_storage = dict()
+
+	def add_item(self, item: Item):
+		self.service_storage[item.name] = item
+
+	def total_amount(self):
+		self.cost_price = 0  # себестоимость
+		for item in self.service_storage:
+			self.cost_price += self.service_storage[item].rate_price
+		self.net_profit = self.service_price - self.cost_price
 
 
 s = Storage()
