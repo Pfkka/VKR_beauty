@@ -1,29 +1,20 @@
+import transliterate
+
+
 class Storage:
 	def __init__(self):
 		self._boxes = dict()
 
-	def add_item(self, name: str, quantity: int, volume: int = None, price=None):
-		if volume:
+	def add_item(self, name: str, volume: int, quantity: int, price=None):
+		try:
+			self._boxes[name][f"volume {volume}"]["quantity"] += quantity
+			if price:
+				self._boxes[name][f"volume {volume}"]["price"] = price
+		except KeyError:
 			try:
-				if self._boxes[name][f"volume {volume}"]:
-					self._boxes[name][f"volume {volume}"]["quantity"] += quantity
-					if price:
-						self._boxes[name][f"volume {volume}"]["price"] = price
-				else:
-					self._boxes[name][f"volume {volume}"]["quantity"] = quantity
-					self._boxes[name][f"volume {volume}"]["price"] = price
+				self._boxes[name][f"volume {volume}"] = {"quantity": quantity, "price": price}
 			except KeyError:
-				try:
-					self._boxes[name][f"volume {volume}"] = {"quantity": quantity, "price": price}
-				except KeyError:
-					self._boxes[name] = {f"volume {volume}": {"quantity": quantity, "price": price}}
-		else:
-			try:
-				self._boxes[name]["quantity"] += quantity
-				if price:
-					self._boxes[name]["price"] = price
-			except KeyError:
-				self._boxes[name] = {"quantity": quantity, "price": price}
+				self._boxes[name] = {f"volume {volume}": {"quantity": quantity, "price": price}}
 
 	def delete(self, name: str, volume: int = None):
 		if volume:
@@ -31,9 +22,9 @@ class Storage:
 		else:
 			del self._boxes[name]
 
-	def get_item(self, name: str, volume: int = None):
+	def get_item(self, name: str, volume: int):
 		try:
-			return self._boxes[name][f"volume {volume}"] if volume else self._boxes[name]
+			return self._boxes[name][f"volume {volume}"]
 		except KeyError:
 			print("Not found")
 
@@ -74,5 +65,9 @@ class Service:
 s = Storage()
 s.add_item("a", 10, 50, 100)
 s.add_item("a", 20, 100, 200)
-s.add_item("b", 10, price=100)
-print(s._boxes)
+s.add_item("b", 1, 10, 100)
+# print(s._boxes)
+a = transliterate.translit("Привет", reversed=True)
+print(a)
+b = transliterate.translit(a, "ru")
+print(b)
