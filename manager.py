@@ -1,4 +1,8 @@
 import transliterate
+from main_form import Ui_MainWindow
+from create_form import Ui_Form
+from PySide2.QtWidgets import QMainWindow, QWidget
+from PySide2.QtCore import Slot, QSettings, QSize, QPoint
 
 
 class Storage:
@@ -31,17 +35,17 @@ class Storage:
 
 class Service:
 	class Item:
-		def __init__(self, name: str, nominal_volume: int, volume: int, price, rate):
+		def __init__(self, name: str, nominal_volume: int, current_volume: int, price, rate):
 			self.name = name
 			self.nominal = nominal_volume
 			self.price = price
 			self.rate = rate
 			self.rate_price = (self.rate / self.nominal) * self.price
-			self.volume = volume
+			self.current_volume = current_volume
 
 		def one_use(self):
-			if self.volume > self.rate:
-				self.volume -= self.rate
+			if self.current_volume > self.rate:
+				self.current_volume -= self.rate
 			else:
 				pass  # забрать со склада новую пачку - обновить объем - в случае чего изменить цену и объем пачки
 
@@ -62,12 +66,82 @@ class Service:
 		self.net_profit = self.service_price - self.cost_price
 
 
-s = Storage()
-s.add_item("a", 10, 50, 100)
-s.add_item("a", 20, 100, 200)
-s.add_item("b", 1, 10, 100)
-# print(s._boxes)
-a = transliterate.translit("Привет", reversed=True)
-print(a)
-b = transliterate.translit(a, "ru")
-print(b)
+class MainWindow(QMainWindow):
+	class CreateForm(QWidget):
+		def __init__(self):
+			super().__init__()
+			self.ui = Ui_Form()
+			self.ui.setupUi(self)
+			self.ui.applyButton.pressed.connect(self.apply)
+			self.ui.cancelButton.pressed.connect(self.cancel)
+			self.readSettings()
+
+		def writeSettings(self):
+			settings = QSettings()
+			settings.beginGroup("CreateForm")
+			settings.setValue("size", self.size())
+			settings.setValue("pos", self.pos())
+			settings.endGroup()
+
+		def readSettings(self):
+			settings = QSettings()
+			settings.beginGroup("CreateForm")
+			self.resize(settings.value("size", QSize()))
+			self.move(settings.value("pos", QPoint()))
+			settings.endGroup()
+
+		@Slot()
+		def apply(self):
+			name = self.ui.name_lineedit.text()
+			volume = self.ui.volume_lineedit.text()
+			quantity = self.ui.quantity_lineedit.text()
+			price = self.ui.price_lineedit.text()
+
+		@Slot()
+		def cancel(self):
+			self.writeSettings()
+			self.close()
+
+	def __init__(self):
+		super().__init__()
+		self.main_ui = Ui_MainWindow()
+		self.main_ui.setupUi(self)
+		self.create = None
+		self.main_ui.add_materialButton.pressed.connect(self.add_material)
+		self.readSettings()
+
+	def writeSettings(self):
+		settings = QSettings()
+		settings.beginGroup("MainForm")
+		settings.setValue("size", self.size())
+		settings.setValue("pos", self.pos())
+		settings.endGroup()
+
+	def readSettings(self):
+		settings = QSettings()
+		settings.beginGroup("MainForm")
+		self.resize(settings.value("size", QSize()))
+		self.move(settings.value("pos", QPoint()))
+		settings.endGroup()
+
+	@Slot()
+	def add_material(self):
+		self.create = self.CreateForm()
+		self.create.show()
+
+	# @Slot()
+	# def exit(self):
+	# 	self.writeSettings()
+	# 	# QApplication.quit()
+
+
+
+# s = Storage()
+# s.add_item("a", 10, 50, 100)
+# s.add_item("a", 20, 100, 200)
+# s.add_item("b", 1, 10, 100)
+# # print(s._boxes)
+# a = transliterate.translit("Привет", reversed=True)
+# print(a)
+# b = transliterate.translit(a, "ru")
+# print(b)
