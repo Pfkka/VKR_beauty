@@ -1,7 +1,9 @@
 import transliterate
+from PySide2.QtGui import QCloseEvent
+
 from main_form import Ui_MainWindow
 from create_form import Ui_Form
-from PySide2.QtWidgets import QMainWindow, QWidget
+from PySide2.QtWidgets import QMainWindow, QWidget, QApplication
 from PySide2.QtCore import Slot, QSettings, QSize, QPoint
 
 
@@ -90,6 +92,9 @@ class MainWindow(QMainWindow):
 			self.move(settings.value("pos", QPoint()))
 			settings.endGroup()
 
+		def closeEvent(self, event: QCloseEvent):
+			self.cancel()
+
 		@Slot()
 		def apply(self):
 			name = self.ui.name_lineedit.text()
@@ -129,10 +134,9 @@ class MainWindow(QMainWindow):
 		self.create = self.CreateForm()
 		self.create.show()
 
-	# @Slot()
-	# def exit(self):
-	# 	self.writeSettings()
-	# 	# QApplication.quit()
+	def closeEvent(self, event: QCloseEvent):
+		self.writeSettings()
+		QApplication.quit()
 
 
 
