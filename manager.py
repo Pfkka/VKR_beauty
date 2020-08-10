@@ -7,62 +7,70 @@ from PySide2.QtWidgets import QMainWindow, QWidget, QApplication
 from PySide2.QtCore import Slot, QSettings, QSize, QPoint
 
 
+class Item:
+	def __init__(self, name: str, nominal_volume: int, quantity: int, price: int):
+		self.name = name
+		self.nominal = nominal_volume
+		self.price = price
+		self.rate = 0
+		self.quantity = quantity
+		self.rate_price = (self.rate / self.nominal) * self.price
+		self.current_volume = nominal_volume
+
+	def one_use(self):
+		if self.current_volume > self.rate:
+			self.current_volume -= self.rate
+		else:
+			pass  # забрать со склада новую пачку - обновить объем - в случае чего изменить цену и объем пачки
+
+	def __str__(self):
+		return f"Name: {self.name}\n" \
+			   f"Volume: {self.nominal}\n" \
+			   f"Price: {self.price}\n" \
+			   f"Quantity: {self.quantity}\n"
+
+
 class Storage:
 	def __init__(self):
 		self._boxes = dict()
 
-	def add_item(self, name: str, volume: int, quantity: int, price=None):
+	def add_item(self, item: Item):
 		try:
-			self._boxes[name][f"volume {volume}"]["quantity"] += quantity
-			if price:
-				self._boxes[name][f"volume {volume}"]["price"] = price
+			if self._boxes[item.name][item.nominal].nominal == item.nominal:
+				print("Item is exist")
 		except KeyError:
-			try:
-				self._boxes[name][f"volume {volume}"] = {"quantity": quantity, "price": price}
-			except KeyError:
-				self._boxes[name] = {f"volume {volume}": {"quantity": quantity, "price": price}}
+			self._boxes[item.name] = {item.nominal: item}
 
-	def delete(self, name: str, volume: int = None):
-		if volume:
-			del self._boxes[name][f"volume {volume}"]
-		else:
-			del self._boxes[name]
+	def delete(self, name: str, volume: int):
+		try:
+			del self._boxes[name][volume]
+		except KeyError:
+			print("Item not found")
 
 	def get_item(self, name: str, volume: int):
 		try:
-			return self._boxes[name][f"volume {volume}"]
+			return self._boxes[name][volume]
 		except KeyError:
 			print("Not found")
 
+	def __str__(self):
+		return f"{self._boxes}"
+
 
 class Service:
-	class Item:
-		def __init__(self, name: str, nominal_volume: int, current_volume: int, price, rate):
-			self.name = name
-			self.nominal = nominal_volume
-			self.price = price
-			self.rate = rate
-			self.rate_price = (self.rate / self.nominal) * self.price
-			self.current_volume = current_volume
 
-		def one_use(self):
-			if self.current_volume > self.rate:
-				self.current_volume -= self.rate
-			else:
-				pass  # забрать со склада новую пачку - обновить объем - в случае чего изменить цену и объем пачки
-
-	def __init__(self, name: str, service_price):
+	def __init__(self, name: str, service_price: int):
 		self.name = name
 		self.service_price = service_price
-		self.cost_price = None
-		self.net_profit = None
+		self.cost_price = 0  # себестоимость
+		self.net_profit = 0
 		self.service_storage = dict()
 
-	def add_item(self, item: Item):
+	def add_item(self, item: Item, rate):
+		item.rate = rate
 		self.service_storage[item.name] = item
 
 	def total_amount(self):
-		self.cost_price = 0  # себестоимость
 		for item in self.service_storage:
 			self.cost_price += self.service_storage[item].rate_price
 		self.net_profit = self.service_price - self.cost_price
@@ -76,6 +84,9 @@ class MainWindow(QMainWindow):
 			self.ui.setupUi(self)
 			self.ui.applyButton.pressed.connect(self.apply)
 			self.ui.cancelButton.pressed.connect(self.cancel)
+
+			self.storage = Storage()
+
 			self.readSettings()
 
 		def writeSettings(self):
@@ -98,9 +109,17 @@ class MainWindow(QMainWindow):
 		@Slot()
 		def apply(self):
 			name = self.ui.name_lineedit.text()
-			volume = self.ui.volume_lineedit.text()
-			quantity = self.ui.quantity_lineedit.text()
-			price = self.ui.price_lineedit.text()
+			volume = int(self.ui.volume_lineedit.text())
+			quantity = int(self.ui.quantity_lineedit.text())
+			price = int(self.ui.price_lineedit.text())
+			item = Item(name, volume, quantity, price)
+			self.storage.add_item(item)
+			print(self.storage)
+			self.ui.name_lineedit.setText("")
+			self.ui.volume_lineedit.setText("")
+			self.ui.quantity_lineedit.setText("")
+			self.ui.price_lineedit.setText("")
+
 
 		@Slot()
 		def cancel(self):
@@ -137,8 +156,6 @@ class MainWindow(QMainWindow):
 	def closeEvent(self, event: QCloseEvent):
 		self.writeSettings()
 		QApplication.quit()
-
-
 
 # s = Storage()
 # s.add_item("a", 10, 50, 100)
