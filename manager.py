@@ -3,7 +3,7 @@ from PySide2.QtGui import QCloseEvent
 
 from main_form import Ui_MainWindow
 from create_form import Ui_Form
-from PySide2.QtWidgets import QMainWindow, QWidget, QApplication
+from PySide2.QtWidgets import QMainWindow, QWidget, QApplication, QTableWidget, QTableWidgetItem, QAbstractItemView
 from PySide2.QtCore import Slot, QSettings, QSize, QPoint
 
 
@@ -39,7 +39,10 @@ class Storage:
 			if self._boxes[item.name][item.nominal].nominal == item.nominal:
 				print("Item is exist")
 		except KeyError:
-			self._boxes[item.name] = {item.nominal: item}
+			try:
+				self._boxes[item.name].update({item.nominal: item})
+			except KeyError:
+				self._boxes[item.name] = {item.nominal: item}
 
 	def delete(self, name: str, volume: int):
 		try:
@@ -78,14 +81,15 @@ class Service:
 
 class MainWindow(QMainWindow):
 	class CreateForm(QWidget):
-		def __init__(self):
+		def __init__(self, storage, table: QTableWidget):
 			super().__init__()
 			self.ui = Ui_Form()
 			self.ui.setupUi(self)
 			self.ui.applyButton.pressed.connect(self.apply)
 			self.ui.cancelButton.pressed.connect(self.cancel)
 
-			self.storage = Storage()
+			self.storage = storage
+			self.table = table
 
 			self.readSettings()
 
@@ -108,13 +112,21 @@ class MainWindow(QMainWindow):
 
 		@Slot()
 		def apply(self):
-			name = self.ui.name_lineedit.text()
-			volume = int(self.ui.volume_lineedit.text())
-			quantity = int(self.ui.quantity_lineedit.text())
-			price = int(self.ui.price_lineedit.text())
-			item = Item(name, volume, quantity, price)
+			name = self.ui.name_lineedit.text().capitalize()
+			volume = self.ui.volume_lineedit.text()
+			quantity = self.ui.quantity_lineedit.text()
+			price = self.ui.price_lineedit.text()
+			if not all([name, volume, quantity, price]):
+				return
+			item = Item(name, int(volume), int(quantity), int(price))
+			row_pos = self.table.rowCount()
+			self.table.insertRow(row_pos)
+			self.table.setItem(row_pos, 0, QTableWidgetItem(name))
+			self.table.setItem(row_pos, 1, QTableWidgetItem(volume))
+			self.table.setItem(row_pos, 2, QTableWidgetItem(quantity))
+			self.table.setItem(row_pos, 3, QTableWidgetItem(price))
+
 			self.storage.add_item(item)
-			print(self.storage)
 			self.ui.name_lineedit.setText("")
 			self.ui.volume_lineedit.setText("")
 			self.ui.quantity_lineedit.setText("")
@@ -130,8 +142,14 @@ class MainWindow(QMainWindow):
 		super().__init__()
 		self.main_ui = Ui_MainWindow()
 		self.main_ui.setupUi(self)
+		self.storage = Storage()
 		self.create = None
 		self.main_ui.add_materialButton.pressed.connect(self.add_material)
+
+		self.main_ui.list_of_materials.setSortingEnabled(True)
+		self.main_ui.list_of_materials.setEditTriggers(QAbstractItemView.NoEditTriggers)
+		self.main_ui.list_of_materials.setColumnCount(4)
+		self.main_ui.list_of_materials.setHorizontalHeaderLabels(["Название", "Объем", "Количество", "Цена"])
 		self.readSettings()
 
 	def writeSettings(self):
@@ -150,19 +168,28 @@ class MainWindow(QMainWindow):
 
 	@Slot()
 	def add_material(self):
-		self.create = self.CreateForm()
+		self.create = self.CreateForm(self.storage, self.main_ui.list_of_materials)
+		print(self.main_ui.list_of_materials)
 		self.create.show()
 
 	def closeEvent(self, event: QCloseEvent):
 		self.writeSettings()
 		QApplication.quit()
 
-# s = Storage()
-# s.add_item("a", 10, 50, 100)
-# s.add_item("a", 20, 100, 200)
-# s.add_item("b", 1, 10, 100)
-# # print(s._boxes)
-# a = transliterate.translit("Привет", reversed=True)
-# print(a)
-# b = transliterate.translit(a, "ru")
-# print(b)
+
+if __name__ == "__main__":
+	pass
+	# s = Storage()
+	# item1 = Item("Cream", 100, 5, 500)
+	# item2 = Item("Cream", 50, 3, 200)
+	# item3 = Item("Something", 150,105, 700)
+	# s.add_item(item1)
+	# s.add_item(item2)
+	# s.add_item(item3)
+	# print(s)
+
+
+	# a = transliterate.translit("Привет", reversed=True)
+	# print(a)
+	# b = transliterate.translit(a, "ru")
+	# print(b)
