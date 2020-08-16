@@ -1,7 +1,5 @@
-import transliterate
 import json
 from PySide2.QtGui import QCloseEvent
-
 from main_form import Ui_MainWindow
 from create_form import Ui_Form
 from PySide2.QtWidgets import QMainWindow, QWidget, QApplication, QTableWidget, QTableWidgetItem, QAbstractItemView
@@ -12,9 +10,9 @@ class Item:
 	def __init__(self, name: str, nominal_volume: int, quantity: int, price: int):
 		self.name = name
 		self.nominal = nominal_volume
+		self.quantity = quantity
 		self.price = price
 		self.rate = 0
-		self.quantity = quantity
 		self.rate_price = (self.rate / self.nominal) * self.price
 		self.current_volume = nominal_volume
 
@@ -45,17 +43,21 @@ class Storage:
 			except KeyError:
 				self._boxes[item.name] = {item.nominal: item}
 
-	def delete(self, name: str, volume: int):
-		try:
-			del self._boxes[name][volume]
-		except KeyError:
-			print("Item not found")
+	def edit(self, current_name, current_nominal_volume, name, nominal_volume, quantity, price):
+		del self._boxes[current_name][current_nominal_volume]
+		self.add_item(Item(name, nominal_volume, quantity, price))
 
-	def get_item(self, name: str, volume: int):
-		try:
-			return self._boxes[name][volume]
-		except KeyError:
-			print("Not found")
+	# def delete(self, name: str, volume: int):
+	# 	try:
+	# 		del self._boxes[name][volume]
+	# 	except KeyError:
+	# 		print("Item not found")
+
+	# def get_item(self, name: str, volume: int):
+	# 	try:
+	# 		return self._boxes[name][volume]
+	# 	except KeyError:
+	# 		print("Not found")
 
 	def to_dict(self):
 		dict_storage = dict()
@@ -82,6 +84,11 @@ class Storage:
 								data[itm][nominal]["quantity"], data[itm][nominal]["price"])
 					self.add_item(item)
 
+	def __iter__(self):
+		for nominal in self._boxes:
+			for item in self._boxes[nominal]:
+				yield self._boxes[nominal][item]
+
 	def __str__(self):
 		return f"{self._boxes}"
 
@@ -107,11 +114,16 @@ class Service:
 
 class MainWindow(QMainWindow):
 	class CreateForm(QWidget):
-		def __init__(self, storage, table: QTableWidget):
+		def __init__(self, storage: Storage, table: QTableWidget, flag=None, current_name=None, current_volume=None):
 			super().__init__()
 			self.ui = Ui_Form()
 			self.ui.setupUi(self)
-			self.ui.applyButton.pressed.connect(self.apply)
+			if all([flag, current_name, current_volume]):
+				self.ui.applyButton.pressed.connect(self.apply_edit)
+				self.current_name = current_name
+				self.current_volume = current_volume
+			else:
+				self.ui.applyButton.pressed.connect(self.apply)
 			self.ui.cancelButton.pressed.connect(self.cancel)
 
 			self.storage = storage
@@ -159,6 +171,20 @@ class MainWindow(QMainWindow):
 			self.ui.price_lineedit.setText("")
 
 		@Slot()
+		def apply_edit(self):
+			name = self.ui.name_lineedit.text().capitalize()
+			volume = self.ui.volume_lineedit.text()
+			quantity = self.ui.quantity_lineedit.text()
+			price = self.ui.price_lineedit.text()
+			self.storage.edit(self.current_name, int(self.current_volume), name, int(volume), int(quantity), int(price))
+			row_pos = self.table.currentRow()
+			self.table.item(row_pos, 0).setText(name)
+			self.table.item(row_pos, 1).setText(volume)
+			self.table.item(row_pos, 2).setText(quantity)
+			self.table.item(row_pos, 3).setText(price)
+			self.cancel()
+
+		@Slot()
 		def cancel(self):
 			self.writeSettings()
 			self.close()
@@ -170,6 +196,7 @@ class MainWindow(QMainWindow):
 		self.storage = Storage()
 		self.create = None
 		self.main_ui.add_materialButton.pressed.connect(self.add_material)
+		self.main_ui.edit_materialButton.pressed.connect(self.edit)
 
 		self.main_ui.list_of_materials.setSortingEnabled(True)
 		self.main_ui.list_of_materials.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -182,6 +209,7 @@ class MainWindow(QMainWindow):
 		settings.beginGroup("MainForm")
 		settings.setValue("size", self.size())
 		settings.setValue("pos", self.pos())
+		self.storage.save_storage()
 		settings.endGroup()
 
 	def readSettings(self):
@@ -189,13 +217,41 @@ class MainWindow(QMainWindow):
 		settings.beginGroup("MainForm")
 		self.resize(settings.value("size", QSize()))
 		self.move(settings.value("pos", QPoint()))
+		self.load_table()
 		settings.endGroup()
+
+	def load_table(self):
+		self.storage.load_storage()
+		for item in self.storage:
+			row_pos = self.main_ui.list_of_materials.rowCount()
+			self.main_ui.list_of_materials.insertRow(row_pos)
+			self.main_ui.list_of_materials.setItem(row_pos, 0, QTableWidgetItem(item.name))
+			self.main_ui.list_of_materials.setItem(row_pos, 1, QTableWidgetItem(str(item.nominal)))
+			self.main_ui.list_of_materials.setItem(row_pos, 2, QTableWidgetItem(str(item.quantity)))
+			self.main_ui.list_of_materials.setItem(row_pos, 3, QTableWidgetItem(str(item.price)))
 
 	@Slot()
 	def add_material(self):
 		self.create = self.CreateForm(self.storage, self.main_ui.list_of_materials)
-		print(self.main_ui.list_of_materials)
 		self.create.show()
+
+	@Slot()
+	def edit(self):
+		try:
+			current_name = self.main_ui.list_of_materials.item(self.main_ui.list_of_materials.currentRow(), 0).text()
+			current_volume = self.main_ui.list_of_materials.item(self.main_ui.list_of_materials.currentRow(), 1).text()
+			current_quantity = self.main_ui.list_of_materials.item(self.main_ui.list_of_materials.currentRow(),
+																   2).text()
+			current_price = self.main_ui.list_of_materials.item(self.main_ui.list_of_materials.currentRow(), 3).text()
+			self.create = self.CreateForm(self.storage, self.main_ui.list_of_materials, "edit", current_name,
+										  current_volume)
+			self.create.ui.name_lineedit.setText(current_name)
+			self.create.ui.volume_lineedit.setText(current_volume)
+			self.create.ui.quantity_lineedit.setText(current_quantity)
+			self.create.ui.price_lineedit.setText(current_price)
+			self.create.show()
+		except AttributeError:
+			return
 
 	def closeEvent(self, event: QCloseEvent):
 		self.writeSettings()
@@ -204,16 +260,16 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
 	pass
-	# s = Storage()
-	# item1 = Item("Cream", 100, 5, 500)
-	# item2 = Item("Cream", 50, 3, 200)
-	# item3 = Item("Something", 150, 105, 700)
-	# s.add_item(item1)
-	# s.add_item(item2)
-	# s.add_item(item3)
-	# s.save_storage()
-	# s.load_storage()
-	# print(s._boxes)
+# s = Storage()
+# item1 = Item("Cream", 100, 5, 500)
+# item2 = Item("Cream", 50, 3, 200)
+# item3 = Item("Something", 150, 105, 700)
+# s.add_item(item1)
+# s.add_item(item2)
+# s.add_item(item3)
+# s.save_storage()
+# s.load_storage()
+# print(s._boxes)
 
 # a = transliterate.translit("Привет", reversed=True)
 # print(a)
