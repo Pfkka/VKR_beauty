@@ -1,4 +1,5 @@
 import transliterate
+import json
 from PySide2.QtGui import QCloseEvent
 
 from main_form import Ui_MainWindow
@@ -55,6 +56,31 @@ class Storage:
 			return self._boxes[name][volume]
 		except KeyError:
 			print("Not found")
+
+	def to_dict(self):
+		dict_storage = dict()
+		for item in self._boxes:
+			dict_storage[item] = dict()
+			for nominal_vol in self._boxes[item]:
+				dict_storage[item][nominal_vol] = {"name": self._boxes[item][nominal_vol].name,
+												   "nominal_volume": self._boxes[item][nominal_vol].nominal,
+												   "quantity": self._boxes[item][nominal_vol].quantity,
+												   "price": self._boxes[item][nominal_vol].price}
+		return dict_storage
+
+	def save_storage(self):
+		with open("storage.json", "wt") as file:
+			dict_storage = self.to_dict()
+			json.dump(dict_storage, file)
+
+	def load_storage(self):
+		with open("storage.json", "rt") as file:
+			data = json.load(file)
+			for itm in data:
+				for nominal in data[itm]:
+					item = Item(data[itm][nominal]["name"], data[itm][nominal]["nominal_volume"],
+								data[itm][nominal]["quantity"], data[itm][nominal]["price"])
+					self.add_item(item)
 
 	def __str__(self):
 		return f"{self._boxes}"
@@ -132,7 +158,6 @@ class MainWindow(QMainWindow):
 			self.ui.quantity_lineedit.setText("")
 			self.ui.price_lineedit.setText("")
 
-
 		@Slot()
 		def cancel(self):
 			self.writeSettings()
@@ -182,14 +207,15 @@ if __name__ == "__main__":
 	# s = Storage()
 	# item1 = Item("Cream", 100, 5, 500)
 	# item2 = Item("Cream", 50, 3, 200)
-	# item3 = Item("Something", 150,105, 700)
+	# item3 = Item("Something", 150, 105, 700)
 	# s.add_item(item1)
 	# s.add_item(item2)
 	# s.add_item(item3)
-	# print(s)
+	# s.save_storage()
+	# s.load_storage()
+	# print(s._boxes)
 
-
-	# a = transliterate.translit("Привет", reversed=True)
-	# print(a)
-	# b = transliterate.translit(a, "ru")
-	# print(b)
+# a = transliterate.translit("Привет", reversed=True)
+# print(a)
+# b = transliterate.translit(a, "ru")
+# print(b)
