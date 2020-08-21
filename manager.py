@@ -8,7 +8,7 @@ from PySide2.QtCore import Slot, QSettings, QSize, QPoint
 
 class Item:
 	def __init__(self, name: str, nominal_volume: int, quantity: int, price: int):
-		self.name = name
+		self.name = name.capitalize()
 		self.nominal = nominal_volume
 		self.quantity = quantity
 		self.price = price
@@ -43,7 +43,10 @@ class Storage:
 			except KeyError:
 				self._boxes[item.name] = {item.nominal: item}
 
-	def edit(self, current_name, current_nominal_volume, name, nominal_volume, quantity, price):
+	def edit(self, current_name: str, current_nominal_volume: int, name: str, nominal_volume: int, quantity: int,
+			 price: int):
+		print(current_name, current_nominal_volume)
+		print(self._boxes[current_name])
 		del self._boxes[current_name][current_nominal_volume]
 		self.add_item(Item(name, nominal_volume, quantity, price))
 
@@ -203,6 +206,8 @@ class MainWindow(QMainWindow):
 		self.main_ui.list_of_materials.setColumnCount(4)
 		self.main_ui.list_of_materials.setHorizontalHeaderLabels(["Название", "Объем", "Количество", "Цена"])
 		self.readSettings()
+
+	# print(self.storage)
 
 	def writeSettings(self):
 		settings = QSettings()
