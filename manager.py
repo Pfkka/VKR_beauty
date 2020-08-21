@@ -43,8 +43,8 @@ class Storage:
 			except KeyError:
 				self._boxes[item.name] = {item.nominal: item}
 
-	def edit(self, current_name: str, current_nominal_volume: int, name: str, nominal_volume: int, quantity: int,
-			 price: int):
+	def edit_box(self, current_name: str, current_nominal_volume: int, name: str, nominal_volume: int, quantity: int,
+				 price: int):
 		print(current_name, current_nominal_volume)
 		print(self._boxes[current_name])
 		del self._boxes[current_name][current_nominal_volume]
@@ -125,9 +125,11 @@ class MainWindow(QMainWindow):
 				self.ui.applyButton.pressed.connect(self.apply_edit)
 				self.current_name = current_name
 				self.current_volume = current_volume
+			elif any([flag, current_name, current_volume]):
+				return
 			else:
 				self.ui.applyButton.pressed.connect(self.apply)
-			self.ui.cancelButton.pressed.connect(self.cancel)
+			self.ui.cancelButton.clicked.connect(self.close)
 
 			self.storage = storage
 			self.table = table
@@ -149,7 +151,9 @@ class MainWindow(QMainWindow):
 			settings.endGroup()
 
 		def closeEvent(self, event: QCloseEvent):
-			self.cancel()
+			print("1")
+			self.writeSettings()
+			self.destroy()
 
 		@Slot()
 		def apply(self):
@@ -179,17 +183,13 @@ class MainWindow(QMainWindow):
 			volume = self.ui.volume_lineedit.text()
 			quantity = self.ui.quantity_lineedit.text()
 			price = self.ui.price_lineedit.text()
-			self.storage.edit(self.current_name, int(self.current_volume), name, int(volume), int(quantity), int(price))
+			self.storage.edit_box(self.current_name, int(self.current_volume), name, int(volume), int(quantity),
+								  int(price))
 			row_pos = self.table.currentRow()
 			self.table.item(row_pos, 0).setText(name)
 			self.table.item(row_pos, 1).setText(volume)
 			self.table.item(row_pos, 2).setText(quantity)
 			self.table.item(row_pos, 3).setText(price)
-			self.cancel()
-
-		@Slot()
-		def cancel(self):
-			self.writeSettings()
 			self.close()
 
 	def __init__(self):
@@ -199,15 +199,14 @@ class MainWindow(QMainWindow):
 		self.storage = Storage()
 		self.create = None
 		self.main_ui.add_materialButton.pressed.connect(self.add_material)
-		self.main_ui.edit_materialButton.pressed.connect(self.edit)
+		self.main_ui.edit_materialButton.pressed.connect(self.edit_item)
+		self.main_ui.list_of_materials.itemDoubleClicked.connect(self.edit_item)
 
 		self.main_ui.list_of_materials.setSortingEnabled(True)
 		self.main_ui.list_of_materials.setEditTriggers(QAbstractItemView.NoEditTriggers)
 		self.main_ui.list_of_materials.setColumnCount(4)
 		self.main_ui.list_of_materials.setHorizontalHeaderLabels(["Название", "Объем", "Количество", "Цена"])
 		self.readSettings()
-
-	# print(self.storage)
 
 	def writeSettings(self):
 		settings = QSettings()
@@ -241,7 +240,7 @@ class MainWindow(QMainWindow):
 		self.create.show()
 
 	@Slot()
-	def edit(self):
+	def edit_item(self):
 		try:
 			current_name = self.main_ui.list_of_materials.item(self.main_ui.list_of_materials.currentRow(), 0).text()
 			current_volume = self.main_ui.list_of_materials.item(self.main_ui.list_of_materials.currentRow(), 1).text()
