@@ -50,17 +50,11 @@ class Storage:
 		del self._boxes[current_name][current_nominal_volume]
 		self.add_item(Item(name, nominal_volume, quantity, price))
 
-	# def delete(self, name: str, volume: int):
-	# 	try:
-	# 		del self._boxes[name][volume]
-	# 	except KeyError:
-	# 		print("Item not found")
-
-	# def get_item(self, name: str, volume: int):
-	# 	try:
-	# 		return self._boxes[name][volume]
-	# 	except KeyError:
-	# 		print("Not found")
+	def delete_item(self, name: str, volume: int):
+		try:
+			del self._boxes[name][volume]
+		except KeyError:
+			print("Item not found")
 
 	def to_dict(self):
 		dict_storage = dict()
@@ -200,6 +194,7 @@ class MainWindow(QMainWindow):
 		self.create = None
 		self.main_ui.add_materialButton.pressed.connect(self.add_material)
 		self.main_ui.edit_materialButton.pressed.connect(self.edit_item)
+		self.main_ui.delete_materialButton.pressed.connect(self.delete_item)
 		self.main_ui.list_of_materials.itemDoubleClicked.connect(self.edit_item)
 
 		self.main_ui.list_of_materials.setSortingEnabled(True)
@@ -255,6 +250,17 @@ class MainWindow(QMainWindow):
 			self.create.ui.price_lineedit.setText(current_price)
 			self.create.show()
 		except AttributeError:
+			return
+
+	@Slot()
+	def delete_item(self):
+		row_now = self.main_ui.list_of_materials.currentRow()
+		if row_now != -1:
+			current_name = self.main_ui.list_of_materials.item(row_now, 0).text()
+			current_volume = int(self.main_ui.list_of_materials.item(row_now, 1).text())
+			self.main_ui.list_of_materials.removeRow(row_now)
+			self.storage.delete_item(current_name, current_volume)
+		else:
 			return
 
 	def closeEvent(self, event: QCloseEvent):
