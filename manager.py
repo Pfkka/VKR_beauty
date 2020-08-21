@@ -1,6 +1,6 @@
 import json
 from PySide2.QtGui import QCloseEvent
-from main_form import Ui_MainWindow
+from main_form_1 import Ui_MainWindow
 from create_form import Ui_Form
 from PySide2.QtWidgets import QMainWindow, QWidget, QApplication, QTableWidget, QTableWidgetItem, QAbstractItemView
 from PySide2.QtCore import Slot, QSettings, QSize, QPoint
@@ -32,6 +32,7 @@ class Item:
 class Storage:
 	def __init__(self):
 		self._boxes = dict()
+		self.total_amount = 0
 
 	def add_item(self, item: Item):
 		try:
@@ -55,6 +56,12 @@ class Storage:
 			del self._boxes[name][volume]
 		except KeyError:
 			print("Item not found")
+
+	def sum_total_amount(self):
+		self.total_amount = 0
+		for nominal in self._boxes:
+			for item in self._boxes[nominal]:
+				self.total_amount += self._boxes[nominal][item].price
 
 	def to_dict(self):
 		dict_storage = dict()
@@ -80,6 +87,7 @@ class Storage:
 					item = Item(data[itm][nominal]["name"], data[itm][nominal]["nominal_volume"],
 								data[itm][nominal]["quantity"], data[itm][nominal]["price"])
 					self.add_item(item)
+		self.sum_total_amount()
 
 	def __iter__(self):
 		for nominal in self._boxes:
@@ -201,6 +209,14 @@ class MainWindow(QMainWindow):
 		self.main_ui.list_of_materials.setEditTriggers(QAbstractItemView.NoEditTriggers)
 		self.main_ui.list_of_materials.setColumnCount(4)
 		self.main_ui.list_of_materials.setHorizontalHeaderLabels(["Название", "Объем", "Количество", "Цена"])
+
+		self.main_ui.total_list.setEditTriggers(QAbstractItemView.NoEditTriggers)
+		self.main_ui.total_list.setColumnCount(2)
+		self.main_ui.total_list.setRowCount(1)
+		self.main_ui.total_list.horizontalHeader().setVisible(False)
+		self.main_ui.total_list.verticalHeader().setVisible(False)
+		self.main_ui.total_list.setShowGrid(False)
+		self.main_ui.total_list.setItem(0, 0, QTableWidgetItem("Стоимость склада:"))
 		self.readSettings()
 
 	def writeSettings(self):
@@ -221,6 +237,8 @@ class MainWindow(QMainWindow):
 
 	def load_table(self):
 		self.storage.load_storage()
+		self.main_ui.total_list.setItem(0, 1, QTableWidgetItem(f"{self.storage.total_amount} руб"))
+		self.main_ui.total_list.resizeColumnsToContents()
 		for item in self.storage:
 			row_pos = self.main_ui.list_of_materials.rowCount()
 			self.main_ui.list_of_materials.insertRow(row_pos)
@@ -228,6 +246,7 @@ class MainWindow(QMainWindow):
 			self.main_ui.list_of_materials.setItem(row_pos, 1, QTableWidgetItem(str(item.nominal)))
 			self.main_ui.list_of_materials.setItem(row_pos, 2, QTableWidgetItem(str(item.quantity)))
 			self.main_ui.list_of_materials.setItem(row_pos, 3, QTableWidgetItem(str(item.price)))
+		self.main_ui.list_of_materials.resizeColumnToContents(0)
 
 	@Slot()
 	def add_material(self):
