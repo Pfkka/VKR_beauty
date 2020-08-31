@@ -2,8 +2,17 @@ import json
 from PySide2.QtGui import QCloseEvent
 from main_form_1 import Ui_MainWindow
 from create_form import Ui_Form
+from create_service_form import Ui_Service_form
 from PySide2.QtWidgets import QMainWindow, QWidget, QApplication, QTableWidget, QTableWidgetItem, QAbstractItemView
 from PySide2.QtCore import Slot, QSettings, QSize, QPoint
+
+
+class Forms:
+	def writeSettings(self):
+		pass
+
+	def writeSettings(self):
+		pass
 
 
 class Item:
@@ -61,7 +70,7 @@ class Storage:
 		self.total_amount = 0
 		for nominal in self._boxes:
 			for item in self._boxes[nominal]:
-				self.total_amount += self._boxes[nominal][item].price
+				self.total_amount += self._boxes[nominal][item].price * self._boxes[nominal][item].quantity
 
 	def to_dict(self):
 		dict_storage = dict()
@@ -118,6 +127,31 @@ class Service:
 
 
 class MainWindow(QMainWindow):
+	class ServiceForm(QWidget):
+		def __init__(self):
+			super().__init__()
+			self.service_ui = Ui_Service_form()
+			self.service_ui.setupUi(self)
+			self.readSettings()
+
+		def writeSettings(self):
+			settings = QSettings()
+			settings.beginGroup("ServiceForm")
+			settings.setValue("size", self.size())
+			settings.setValue("pos", self.pos())
+			settings.endGroup()
+
+		def readSettings(self):
+			settings = QSettings()
+			settings.beginGroup("ServiceForm")
+			self.resize(settings.value("size", QSize()))
+			self.move(settings.value("pos", QPoint()))
+			settings.endGroup()
+
+		def closeEvent(self, event: QCloseEvent):
+			self.writeSettings()
+			self.close()
+
 	class CreateForm(QWidget):
 		def __init__(self, storage: Storage, table: QTableWidget, flag=None, current_name=None, current_volume=None):
 			super().__init__()
@@ -155,7 +189,7 @@ class MainWindow(QMainWindow):
 		def closeEvent(self, event: QCloseEvent):
 			print("1")
 			self.writeSettings()
-			self.destroy()
+			self.close()
 
 		@Slot()
 		def apply(self):
@@ -199,11 +233,15 @@ class MainWindow(QMainWindow):
 		self.main_ui = Ui_MainWindow()
 		self.main_ui.setupUi(self)
 		self.storage = Storage()
+		self.service_storage = dict()
 		self.create = None
+		self.service_form =None
 		self.main_ui.add_materialButton.pressed.connect(self.add_material)
 		self.main_ui.edit_materialButton.pressed.connect(self.edit_item)
 		self.main_ui.delete_materialButton.pressed.connect(self.delete_item)
 		self.main_ui.list_of_materials.itemDoubleClicked.connect(self.edit_item)
+
+		self.main_ui.add_serviceButton.pressed.connect(self.add_service)
 
 		self.main_ui.list_of_materials.setSortingEnabled(True)
 		self.main_ui.list_of_materials.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -247,6 +285,11 @@ class MainWindow(QMainWindow):
 			self.main_ui.list_of_materials.setItem(row_pos, 2, QTableWidgetItem(str(item.quantity)))
 			self.main_ui.list_of_materials.setItem(row_pos, 3, QTableWidgetItem(str(item.price)))
 		self.main_ui.list_of_materials.resizeColumnToContents(0)
+
+	@Slot()
+	def add_service(self):
+		self.service_form = self.ServiceForm()
+		self.service_form.show()
 
 	@Slot()
 	def add_material(self):
