@@ -4,7 +4,7 @@ from main_form_1 import Ui_MainWindow
 from create_form import Ui_Form
 from create_service_form import Ui_Service_form
 from PySide2.QtWidgets import QMainWindow, QWidget, QApplication, QTableWidget, QTableWidgetItem, QAbstractItemView
-from PySide2.QtCore import Slot, QSettings, QSize, QPoint
+from PySide2.QtCore import Slot, QSettings, QSize, QPoint, Qt
 
 
 # class Forms:
@@ -21,8 +21,8 @@ class Item:
         self.nominal = nominal_volume
         self.quantity = quantity
         self.price = price
-        self.rate = 0
-        self.rate_price = (self.rate / self.nominal) * self.price
+        self.rt = 0
+        self.rate_price = 0
         self.current_volume = nominal_volume
 
     def one_use(self):
@@ -30,6 +30,15 @@ class Item:
             self.current_volume -= self.rate
         else:
             pass  # забрать со склада новую пачку - обновить объем - в случае чего изменить цену и объем пачки
+
+    @property
+    def rate(self):
+        return self.rate_price
+
+    @rate.setter
+    def rate(self, rate):
+        self.rt = rate
+        self.rate_price = (self.rt / self.nominal) * self.price
 
     def __str__(self):
         return f"Name: {self.name}\n" \
@@ -107,6 +116,9 @@ class Storage:
             for item in self._boxes[nominal]:
                 yield self._boxes[nominal][item]
 
+    def __getitem__(self, item):
+        return self._boxes[item]
+
     def __str__(self):
         return f"{self._boxes}"
 
@@ -132,11 +144,12 @@ class Service:
 
 class MainWindow(QMainWindow):
     class ServiceForm(QWidget):
-        def __init__(self, storage):
+        def __init__(self, storage, total=0):
             super().__init__()
             self.service_ui = Ui_Service_form()
             self.service_ui.setupUi(self)
             self.right_storage = storage
+            self.service_storage = dict()
 
             self.service_ui.right_table.setSortingEnabled(True)
             self.service_ui.right_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -144,6 +157,17 @@ class MainWindow(QMainWindow):
             self.service_ui.right_table.setHorizontalHeaderLabels(["Название", "Объем", "Количество", "Цена"])
             self.load_right_table()
 
+            self.service_ui.left_table.setColumnCount(4)
+            self.service_ui.left_table.setRowCount(1)
+            self.service_ui.left_table.setHorizontalHeaderLabels(
+                ["Название", "Объем/текущий", "Расход", "Себестоимость"])
+            self.service_ui.left_table.setItem(self.service_ui.left_table.rowCount() - 1, 3,
+                                               QTableWidgetItem(str(total)))
+            self.service_ui.left_table.setItem(self.service_ui.left_table.rowCount() - 1, 2, QTableWidgetItem("Всего:"))
+            self.service_ui.right_table.itemDoubleClicked.connect(self.add_item)
+            self.service_ui.left_table.itemDoubleClicked.connect(self.delete_row)
+            self.service_ui.left_table.itemChanged.connect(self.change_rate)
+            self.service_ui.cancelButton.clicked.connect(self.close)
             self.readSettings()
 
         def load_right_table(self):
@@ -156,6 +180,29 @@ class MainWindow(QMainWindow):
                 self.service_ui.right_table.setItem(row_pos, 3, QTableWidgetItem(str(item.price)))
             self.service_ui.right_table.resizeColumnToContents(0)
 
+        @Slot()
+        def add_item(self):
+            current_name = self.service_ui.right_table.item(self.service_ui.right_table.currentRow(), 0).text()
+            volume = int(self.service_ui.right_table.item(self.service_ui.right_table.currentRow(), 1).text())
+
+            item = self.right_storage[current_name][volume]
+            self.service_storage[item.name] = item
+
+            names = {0: item.name, 1: f"{item.nominal}/{item.current_volume}", 2: item.rate, 3: item.rate_price}
+            row_pos = self.service_ui.left_table.rowCount() - 1
+            self.service_ui.left_table.insertRow(row_pos)
+            for i in range(4):
+                qitem = QTableWidgetItem(str(names[i]))
+                if i != 2:
+                    qitem.setFlags(Qt.ItemIsEnabled)
+                self.service_ui.left_table.setItem(row_pos, i, qitem)
+
+        @Slot()
+        def delete_row(self):
+            current_row = self.service_ui.left_table.currentRow()
+            if self.service_ui.left_table.currentColumn() != 2:
+                self.service_ui.left_table.removeRow(current_row)
+
         def writeSettings(self):
             settings = QSettings()
             settings.beginGroup("ServiceForm")
@@ -166,9 +213,22 @@ class MainWindow(QMainWindow):
         def readSettings(self):
             settings = QSettings()
             settings.beginGroup("ServiceForm")
-            self.resize(settings.value("size", QSize()))
-            self.move(settings.value("pos", QPoint()))
+            self.resize(settings.value("size", QSize(500, 500)))
+            self.move(settings.value("pos", QPoint(500, 500)))
             settings.endGroup()
+
+        @Slot()
+        def change_rate(self, item: QTableWidgetItem):
+            if item.column() == 2 and int(item.text()) != 0:
+                rate = int(item.text())
+                storage_item = self.service_storage[self.service_ui.left_table.item(item.row(), 0).text()]
+                storage_item.rate = rate
+                cost = self.service_ui.left_table.item(item.row(), 3)
+                cost.setText(str(storage_item.rate_price))
+                total = self.service_ui.left_table.item(self.service_ui.left_table.rowCount() - 1, 3)
+                amount = float(total.text())
+                amount += storage_item.rate_price
+                total.setText(str(amount))
 
         def closeEvent(self, event: QCloseEvent):
             self.writeSettings()
@@ -204,8 +264,8 @@ class MainWindow(QMainWindow):
         def readSettings(self):
             settings = QSettings()
             settings.beginGroup("CreateForm")
-            self.resize(settings.value("size", QSize()))
-            self.move(settings.value("pos", QPoint()))
+            self.resize(settings.value("size", QSize(500, 500)))
+            self.move(settings.value("pos", QPoint(500, 500)))
             settings.endGroup()
 
         def closeEvent(self, event: QCloseEvent):
@@ -290,8 +350,8 @@ class MainWindow(QMainWindow):
     def readSettings(self):
         settings = QSettings()
         settings.beginGroup("MainForm")
-        self.resize(settings.value("size", QSize()))
-        self.move(settings.value("pos", QPoint()))
+        self.resize(settings.value("size", QSize(500, 500)))
+        self.move(settings.value("pos", QPoint(500, 500)))
         self.load_table()
         settings.endGroup()
 
