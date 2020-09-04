@@ -196,6 +196,7 @@ class MainWindow(QMainWindow):
 
         @Slot()
         def apply(self):
+            # TODO: [Egor] Fix here
             sevice_name = self.service_ui.service_name_lineEdit.text()
             service_price = self.service_ui.service_price_lineEdit.text()
             if not service_price.isdigit():
