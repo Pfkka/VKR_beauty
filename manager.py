@@ -3,7 +3,8 @@ from PySide2.QtGui import QCloseEvent
 from main_form_1 import Ui_MainWindow
 from create_form import Ui_Form
 from create_service_form import Ui_Service_form
-from PySide2.QtWidgets import QMainWindow, QWidget, QApplication, QTableWidget, QTableWidgetItem, QAbstractItemView, QHeaderView
+from PySide2.QtWidgets import QMainWindow, QWidget, QApplication, QTableWidget, QTableWidgetItem, QAbstractItemView, \
+    QHeaderView
 from PySide2.QtCore import Slot, QSettings, QSize, QPoint, Qt, Signal
 
 
@@ -138,7 +139,6 @@ class Service:
 
 
 class MainWindow(QMainWindow):
-
     class ServiceForm(QWidget):
         def __init__(self, storage, service, total=0):
             super().__init__()
@@ -153,8 +153,6 @@ class MainWindow(QMainWindow):
             self.service_ui.right_table.setColumnCount(4)
             self.service_ui.right_table.setHorizontalHeaderLabels(["Название", "Объем", "Количество", "Цена"])
             self.load_right_table()
-
-
 
             self.service_ui.left_table.setColumnCount(4)
             self.service_ui.left_table.setRowCount(1)
@@ -196,14 +194,11 @@ class MainWindow(QMainWindow):
 
         @Slot()
         def apply(self):
-            # TODO: [Egor] Fix service
-            #TODO: T2 feature
-            sevice_name = self.service_ui.service_name_lineEdit.text()
+            service_name = self.service_ui.service_name_lineEdit.text()
             service_price = self.service_ui.service_price_lineEdit.text()
             if not service_price.isdigit():
                 return
             service_price = float(service_price)
-
 
         @Slot()
         def add_item(self):
@@ -225,7 +220,7 @@ class MainWindow(QMainWindow):
         @Slot()
         def delete_row(self):
             current_row = self.service_ui.left_table.currentRow()
-            if self.service_ui.left_table.currentColumn() != 2 and current_row != self.service_ui.left_table.rowCount()-1:
+            if self.service_ui.left_table.currentColumn() != 2 and current_row != self.service_ui.left_table.rowCount() - 1:
                 self.service_ui.left_table.removeRow(current_row)
 
         def writeSettings(self):
@@ -239,9 +234,8 @@ class MainWindow(QMainWindow):
             settings = QSettings()
             settings.beginGroup("ServiceForm")
             self.resize(settings.value("size", QSize(500, 500)))
-            dektop_size = QApplication.desktop().size()
-            dx_c = dektop_size.width()/2
-            self.move(settings.value("pos", QPoint(500, 500)))
+            self.move(settings.value("pos", QPoint(int(QApplication.desktop().size().width() / 2),
+                                                   int(QApplication.desktop().size().height() / 2))))
             settings.endGroup()
 
         @Slot()
@@ -268,6 +262,7 @@ class MainWindow(QMainWindow):
     class CreateForm(QWidget):
 
         data_changed = Signal(str, str, str, str, str, str)
+        data_set = Signal(str, str, str, str)
 
         def __init__(self, storage: Storage, table: QTableWidget, flag=None, current_name=None, current_volume=None):
             super().__init__()
@@ -299,11 +294,11 @@ class MainWindow(QMainWindow):
             settings = QSettings()
             settings.beginGroup("CreateForm")
             self.resize(settings.value("size", QSize(500, 500)))
-            self.move(settings.value("pos", QPoint(500, 500)))
+            self.move(settings.value("pos", QPoint(int(QApplication.desktop().size().width() / 2),
+                                                   int(QApplication.desktop().size().height() / 2))))
             settings.endGroup()
 
         def closeEvent(self, event: QCloseEvent):
-            print("1")
             self.writeSettings()
             self.close()
 
@@ -315,15 +310,7 @@ class MainWindow(QMainWindow):
             price = self.ui.price_lineedit.text()
             if not all([name, volume, quantity, price]):
                 return
-            item = Item(name, int(volume), int(quantity), int(price))
-            row_pos = self.table.rowCount()
-            self.table.insertRow(row_pos)
-            self.table.setItem(row_pos, 0, QTableWidgetItem(name))
-            self.table.setItem(row_pos, 1, QTableWidgetItem(volume))
-            self.table.setItem(row_pos, 2, QTableWidgetItem(quantity))
-            self.table.setItem(row_pos, 3, QTableWidgetItem(price))
-
-            self.storage.add_item(item)
+            self.data_set.emit(name, volume, quantity, price)
             self.ui.name_lineedit.setText("")
             self.ui.volume_lineedit.setText("")
             self.ui.quantity_lineedit.setText("")
@@ -340,10 +327,6 @@ class MainWindow(QMainWindow):
 
             self.close()
 
-           # edit_row(self, current_name, current_volume, name, volume, quantity, price):
-
-
-
     def __init__(self):
         super().__init__()
         self.main_ui = Ui_MainWindow()
@@ -353,9 +336,9 @@ class MainWindow(QMainWindow):
         self.create = None
         self.service_form = None
         self.main_ui.add_materialButton.pressed.connect(self.add_material)
-        self.main_ui.edit_materialButton.pressed.connect(self.edit_item)
-        self.main_ui.delete_materialButton.pressed.connect(self.delete_item)
-        self.main_ui.list_of_materials.itemDoubleClicked.connect(self.edit_item)
+        self.main_ui.edit_materialButton.pressed.connect(self.edit_storage_item)
+        self.main_ui.delete_materialButton.pressed.connect(self.delete_storage_item)
+        self.main_ui.list_of_materials.itemDoubleClicked.connect(self.edit_storage_item)
 
         self.main_ui.add_serviceButton.pressed.connect(self.add_service)
 
@@ -366,14 +349,15 @@ class MainWindow(QMainWindow):
 
         header = self.main_ui.list_of_materials.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeToContents)
-        #header.setStretchLastSection(True)
         header.setSectionResizeMode(0, QHeaderView.Stretch)
-
 
         self.main_ui.list_of_services.setSortingEnabled(True)
         self.main_ui.list_of_services.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.main_ui.list_of_services.setColumnCount(5)
         self.main_ui.list_of_services.setHorizontalHeaderLabels(["Название", "Цена", "Себестоимость", "+1", "-1"])
+        header = self.main_ui.list_of_services.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
 
         self.main_ui.total_list.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.main_ui.total_list.setColumnCount(2)
@@ -384,10 +368,8 @@ class MainWindow(QMainWindow):
         self.main_ui.total_list.setItem(0, 0, QTableWidgetItem("Стоимость склада:"))
         self.readSettings()
 
-
-
     @Slot()
-    def edit_row(self, current_name, current_volume, name, volume, quantity, price):
+    def edit_storage_row(self, current_name, current_volume, name, volume, quantity, price):
         self.storage.edit_box(current_name, int(current_volume), name, int(volume), int(quantity),
                               int(price))
         row_pos = self.main_ui.list_of_materials.currentRow()
@@ -395,6 +377,19 @@ class MainWindow(QMainWindow):
         self.main_ui.list_of_materials.item(row_pos, 1).setText(volume)
         self.main_ui.list_of_materials.item(row_pos, 2).setText(quantity)
         self.main_ui.list_of_materials.item(row_pos, 3).setText(price)
+        self.total_storage_update()
+
+    @Slot()
+    def add_storage_row(self, name, volume, quantity, price):
+        item = Item(name, int(volume), int(quantity), int(price))
+        row_pos = self.main_ui.list_of_materials.rowCount()
+        self.main_ui.list_of_materials.insertRow(row_pos)
+        self.main_ui.list_of_materials.setItem(row_pos, 0, QTableWidgetItem(name))
+        self.main_ui.list_of_materials.setItem(row_pos, 1, QTableWidgetItem(volume))
+        self.main_ui.list_of_materials.setItem(row_pos, 2, QTableWidgetItem(quantity))
+        self.main_ui.list_of_materials.setItem(row_pos, 3, QTableWidgetItem(price))
+        self.storage.add_item(item)
+        self.total_storage_update()
 
     def writeSettings(self):
         settings = QSettings()
@@ -408,7 +403,8 @@ class MainWindow(QMainWindow):
         settings = QSettings()
         settings.beginGroup("MainForm")
         self.resize(settings.value("size", QSize(500, 500)))
-        self.move(settings.value("pos", QPoint(500, 500)))
+        self.move(settings.value("pos", QPoint(int(QApplication.desktop().size().width() / 2),
+                                               int(QApplication.desktop().size().height() / 2))))
         self.load_table()
         settings.endGroup()
 
@@ -433,10 +429,11 @@ class MainWindow(QMainWindow):
     @Slot()
     def add_material(self):
         self.create = self.CreateForm(self.storage, self.main_ui.list_of_materials)
+        self.create.data_set.connect(self.add_storage_row)
         self.create.show()
 
     @Slot()
-    def edit_item(self):
+    def edit_storage_item(self):
         try:
             current_name = self.main_ui.list_of_materials.item(self.main_ui.list_of_materials.currentRow(), 0).text()
             current_volume = self.main_ui.list_of_materials.item(self.main_ui.list_of_materials.currentRow(), 1).text()
@@ -445,7 +442,7 @@ class MainWindow(QMainWindow):
             current_price = self.main_ui.list_of_materials.item(self.main_ui.list_of_materials.currentRow(), 3).text()
             self.create = self.CreateForm(self.storage, self.main_ui.list_of_materials, "edit", current_name,
                                           current_volume)
-            self.create.data_changed.connect(self.edit_row)
+            self.create.data_changed.connect(self.edit_storage_row)
             self.create.ui.name_lineedit.setText(current_name)
             self.create.ui.volume_lineedit.setText(current_volume)
             self.create.ui.quantity_lineedit.setText(current_quantity)
@@ -455,15 +452,20 @@ class MainWindow(QMainWindow):
             return
 
     @Slot()
-    def delete_item(self):
+    def delete_storage_item(self):
         row_now = self.main_ui.list_of_materials.currentRow()
         if row_now != -1:
             current_name = self.main_ui.list_of_materials.item(row_now, 0).text()
             current_volume = int(self.main_ui.list_of_materials.item(row_now, 1).text())
             self.main_ui.list_of_materials.removeRow(row_now)
             self.storage.delete_item(current_name, current_volume)
+            self.total_storage_update()
         else:
             return
+
+    def total_storage_update(self):
+        self.storage.sum_total_amount()
+        self.main_ui.total_list.item(0, 1).setText(f"{self.storage.total_amount} руб")
 
     def closeEvent(self, event: QCloseEvent):
         self.writeSettings()
