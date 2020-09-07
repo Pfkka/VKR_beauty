@@ -1,4 +1,5 @@
 import json
+from copy import copy
 from PySide2.QtGui import QCloseEvent
 from main_form_1 import Ui_MainWindow
 from create_form import Ui_Form
@@ -126,14 +127,18 @@ class Service:
         self.net_profit = service_price - cost_price
         self.service_storage = dict()
 
-    def add_item(self, item: Item, rate):
-        item.rate = rate
-        self.service_storage[item.name] = item
+    def add_item(self, item: Item):
+        self.service_storage[item.name] = copy(item)
+        item = self.service_storage[item.name]
+        if item.quantity > 0:
+            item.quantity -= 1
+        else:
+            print(f"{item.name} is empty !!!")
 
 
 class MainWindow(QMainWindow):
     class ServiceForm(QWidget):
-        data_set = Signal()
+        data_set = Signal(str, float, dict, float)
 
         def __init__(self, storage, service, total=0):
             super().__init__()
@@ -189,11 +194,15 @@ class MainWindow(QMainWindow):
 
         @Slot()
         def apply(self):
-            service_name = self.service_ui.service_name_lineEdit.text()
+            service_name = self.service_ui.service_name_lineEdit.text().capitalize()
             service_price = self.service_ui.service_price_lineEdit.text()
             if not service_price.isdigit():
                 return
             service_price = float(service_price)
+            cost_price = float(self.service_ui.left_table.item(self.service_ui.left_table.rowCount() - 1, 3).text())
+            self.data_set.emit(service_name, service_price, self.service_storage, cost_price)
+            self.close()
+
 
         @Slot()
         def add_item(self):
@@ -423,7 +432,26 @@ class MainWindow(QMainWindow):
     @Slot()
     def add_service(self):
         self.service_form = self.ServiceForm(self.storage, self.main_ui.list_of_services)
+        self.service_form.data_set.connect(self.create_service)
         self.service_form.show()
+
+    @Slot()
+    def create_service(self, name, service_price, service_storage, cost_price):
+        service = Service(name, service_price, cost_price)
+        for item in service_storage:
+            service.add_item(service_storage[item])
+        self.services[service.name] = service
+        self.update_list_storage()
+        self.total_storage_update()
+        table_services = self.main_ui.list_of_services
+        row_pos = table_services.rowCount()
+        table_services.insertRow(row_pos)
+        table_services.setItem(row_pos, 0, QTableWidgetItem(service.name))
+        table_services.setItem(row_pos, 1, QTableWidgetItem(str(service.service_price)))
+        table_services.setItem(row_pos, 2, QTableWidgetItem(str(service.cost_price)))
+        table_services.setItem(row_pos, 3, QTableWidgetItem("In work"))
+        table_services.setItem(row_pos, 4, QTableWidgetItem("In work"))
+
 
     @Slot()
     def add_material(self):
@@ -462,6 +490,13 @@ class MainWindow(QMainWindow):
         else:
             return
 
+    def update_list_storage(self):
+        for item in self.storage:
+            row = self.main_ui.list_of_materials.findItems(item.name, Qt.MatchFixedString)[0].row()
+
+            self.main_ui.list_of_materials.item(row, 2).setText(f"{item.quantity}")
+        self.total_storage_update()
+
     def total_storage_update(self):
         self.storage.sum_total_amount()
         self.main_ui.total_list.item(0, 1).setText(f"{self.storage.total_amount} руб")
@@ -473,18 +508,3 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     pass
-# s = Storage()
-# item1 = Item("Cream", 100, 5, 500)
-# item2 = Item("Cream", 50, 3, 200)
-# item3 = Item("Something", 150, 105, 700)
-# s.add_item(item1)
-# s.add_item(item2)
-# s.add_item(item3)
-# s.save_storage()
-# s.load_storage()
-# print(s._boxes)
-
-# a = transliterate.translit("Привет", reversed=True)
-# print(a)
-# b = transliterate.translit(a, "ru")
-# print(b)
