@@ -8,14 +8,6 @@ from PySide2.QtWidgets import QMainWindow, QWidget, QApplication, QTableWidget, 
 from PySide2.QtCore import Slot, QSettings, QSize, QPoint, Qt, Signal
 
 
-# class Forms:
-# 	def writeSettings(self):
-# 		pass
-#
-# 	def writeSettings(self):
-# 		pass
-
-
 class Item:
     def __init__(self, name: str, nominal_volume: int, quantity: int, price: int):
         self.name = name.capitalize()
@@ -65,8 +57,6 @@ class Storage:
 
     def edit_box(self, current_name: str, current_nominal_volume: int, name: str, nominal_volume: int, quantity: int,
                  price: int):
-        print(current_name, current_nominal_volume)
-        print(self._boxes[current_name])
         del self._boxes[current_name][current_nominal_volume]
         self.add_item(Item(name, nominal_volume, quantity, price))
 
@@ -126,6 +116,9 @@ class Storage:
 
 class Service:
 
+    # class ServiceItem:
+    #     def __init__(self, service_name: str, service_price: float, service_storage):
+
     def __init__(self, name: str, service_price: int, cost_price: float):
         self.name = name
         self.service_price = service_price
@@ -140,6 +133,8 @@ class Service:
 
 class MainWindow(QMainWindow):
     class ServiceForm(QWidget):
+        data_set = Signal()
+
         def __init__(self, storage, service, total=0):
             super().__init__()
             self.service_ui = Ui_Service_form()
@@ -206,6 +201,9 @@ class MainWindow(QMainWindow):
             volume = int(self.service_ui.right_table.item(self.service_ui.right_table.currentRow(), 1).text())
 
             item = self.right_storage[current_name][volume]
+            if item.name in self.service_storage:
+                return
+
             self.service_storage[item.name] = item
 
             names = {0: item.name, 1: f"{item.nominal}/{item.current_volume}", 2: item.rate, 3: item.rate_price}
@@ -221,6 +219,7 @@ class MainWindow(QMainWindow):
         def delete_row(self):
             current_row = self.service_ui.left_table.currentRow()
             if self.service_ui.left_table.currentColumn() != 2 and current_row != self.service_ui.left_table.rowCount() - 1:
+                del self.service_storage[self.service_ui.left_table.item(current_row, 0).text()]
                 self.service_ui.left_table.removeRow(current_row)
 
         def writeSettings(self):
@@ -332,7 +331,7 @@ class MainWindow(QMainWindow):
         self.main_ui = Ui_MainWindow()
         self.main_ui.setupUi(self)
         self.storage = Storage()
-        self.service_storage = dict()
+        self.services = dict()
         self.create = None
         self.service_form = None
         self.main_ui.add_materialButton.pressed.connect(self.add_material)
