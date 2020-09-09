@@ -10,14 +10,15 @@ from PySide2.QtCore import Slot, QSettings, QSize, QPoint, Qt, Signal
 
 
 class Item:
-    def __init__(self, name: str, nominal_volume: int, quantity: int, price: int):
+    def __init__(self, name: str, nominal_volume: int, quantity: int, price: int, rate=0, rate_price=0,
+                 current_volume=None):
         self.name = name.capitalize()
         self.nominal = nominal_volume
         self.quantity = quantity
         self.price = price
-        self.rt = 0
-        self.rate_price = 0
-        self.current_volume = nominal_volume
+        self.rt = rate
+        self.rate_price = rate_price
+        self.current_volume = nominal_volume if not current_volume else current_volume
 
     def one_use(self):
         if self.current_volume > self.rate:
@@ -27,7 +28,7 @@ class Item:
 
     @property
     def rate(self):
-        return self.rate_price
+        return self.rt
 
     @rate.setter
     def rate(self, rate):
@@ -130,10 +131,23 @@ class Service:
     def add_item(self, item: Item):
         self.service_storage[item.name] = copy(item)
         item = self.service_storage[item.name]
-        if item.quantity > 0:
-            item.quantity -= 1
-        else:
+        if item.quantity == 0:
             print(f"{item.name} is empty !!!")
+
+    def service_to_dict(self):
+        dict_sevice = dict()
+        dict_sevice["cost_price"] = self.cost_price
+        dict_sevice["service_price"] = self.service_price
+        dict_sevice["items"] = dict()
+        for item in self.service_storage:
+            dict_sevice["items"][item] = {"name": self.service_storage[item].name,
+                                          "nominal_volume": self.service_storage[item].nominal,
+                                          "quantity": self.service_storage[item].quantity,
+                                          "price": self.service_storage[item].price,
+                                          "rate": self.service_storage[item].rate,
+                                          "rate_price": self.service_storage[item].rate_price,
+                                          "current_volume": self.service_storage[item].current_volume}
+        return dict_sevice
 
 
 class MainWindow(QMainWindow):
@@ -202,7 +216,6 @@ class MainWindow(QMainWindow):
             cost_price = float(self.service_ui.left_table.item(self.service_ui.left_table.rowCount() - 1, 3).text())
             self.data_set.emit(service_name, service_price, self.service_storage, cost_price)
             self.close()
-
 
         @Slot()
         def add_item(self):
@@ -405,6 +418,7 @@ class MainWindow(QMainWindow):
         settings.setValue("size", self.size())
         settings.setValue("pos", self.pos())
         self.storage.save_storage()
+        self.save_services()
         settings.endGroup()
 
     def readSettings(self):
@@ -414,20 +428,50 @@ class MainWindow(QMainWindow):
         self.move(settings.value("pos", QPoint(int(QApplication.desktop().size().width() / 2),
                                                int(QApplication.desktop().size().height() / 2))))
         self.load_table()
+        self.load_services()
         settings.endGroup()
 
     def load_table(self):
         self.storage.load_storage()
         self.main_ui.total_list.setItem(0, 1, QTableWidgetItem(f"{self.storage.total_amount} руб"))
         self.main_ui.total_list.resizeColumnsToContents()
+        table = self.main_ui.list_of_materials
         for item in self.storage:
-            row_pos = self.main_ui.list_of_materials.rowCount()
-            self.main_ui.list_of_materials.insertRow(row_pos)
-            self.main_ui.list_of_materials.setItem(row_pos, 0, QTableWidgetItem(item.name))
-            self.main_ui.list_of_materials.setItem(row_pos, 1, QTableWidgetItem(str(item.nominal)))
-            self.main_ui.list_of_materials.setItem(row_pos, 2, QTableWidgetItem(str(item.quantity)))
-            self.main_ui.list_of_materials.setItem(row_pos, 3, QTableWidgetItem(str(item.price)))
-        self.main_ui.list_of_materials.resizeColumnToContents(0)
+            row_pos = table.rowCount()
+            table.insertRow(row_pos)
+            table.setItem(row_pos, 0, QTableWidgetItem(item.name))
+            table.setItem(row_pos, 1, QTableWidgetItem(str(item.nominal)))
+            table.setItem(row_pos, 2, QTableWidgetItem(str(item.quantity)))
+            table.setItem(row_pos, 3, QTableWidgetItem(str(item.price)))
+        table.resizeColumnToContents(0)
+
+    def save_services(self):
+        with open("services.json", "wt") as file:
+            services_dct = dict()
+            for service in self.services:
+                services_dct[service] = self.services[service].service_to_dict()
+            json.dump(services_dct, file)
+
+    def load_services(self):
+        try:
+            with open("services.json", "rt") as file:
+                data = json.load(file)
+                for service in data:
+                    service_name = service
+                    service_price = data[service]["service_price"]
+                    service_cost_price = data[service]["cost_price"]
+                    items = dict()
+                    for item in data[service]["items"]:
+                        current_item = data[service]["items"][item]
+                        itm = Item(current_item["name"], current_item["nominal_volume"], current_item["quantity"],
+                                   current_item["price"], current_item["rate"], current_item["rate_price"],
+                                   current_item["current_volume"])
+                        items[itm.name] = itm
+                    self.create_service(service_name, service_price, items, service_cost_price)
+
+        except FileNotFoundError:
+            with open("services.json", "wt") as file:
+                pass
 
     @Slot()
     def add_service(self):
@@ -436,7 +480,7 @@ class MainWindow(QMainWindow):
         self.service_form.show()
 
     @Slot()
-    def create_service(self, name, service_price, service_storage, cost_price):
+    def create_service(self, name: str, service_price: int, service_storage: dict, cost_price: float):
         service = Service(name, service_price, cost_price)
         for item in service_storage:
             service.add_item(service_storage[item])
@@ -451,7 +495,6 @@ class MainWindow(QMainWindow):
         table_services.setItem(row_pos, 2, QTableWidgetItem(str(service.cost_price)))
         table_services.setItem(row_pos, 3, QTableWidgetItem("In work"))
         table_services.setItem(row_pos, 4, QTableWidgetItem("In work"))
-
 
     @Slot()
     def add_material(self):
@@ -493,7 +536,6 @@ class MainWindow(QMainWindow):
     def update_list_storage(self):
         for item in self.storage:
             row = self.main_ui.list_of_materials.findItems(item.name, Qt.MatchFixedString)[0].row()
-
             self.main_ui.list_of_materials.item(row, 2).setText(f"{item.quantity}")
         self.total_storage_update()
 
