@@ -16,8 +16,7 @@ class Item:
         self.nominal = nominal_volume
         self.quantity = quantity
         self.price = price
-        self.rt = 0
-        self.rate = rate
+        self.rt = rate
         self.rate_price = rate_price if rate_price is not None else 0
         self.current_volume = nominal_volume if not current_volume else current_volume
 
@@ -200,7 +199,6 @@ class MainWindow(QMainWindow):
                 self.service_storage = service.service_storage
                 self.service_ui.service_name_lineEdit.setText(service.name)
                 self.service_ui.service_price_lineEdit.setText(str(int(service.service_price)))
-                print(self.service_storage)
                 for item in self.service_storage:
                     self.add_item(item=self.service_storage[item])
                 self.set_total()
@@ -283,8 +281,8 @@ class MainWindow(QMainWindow):
             if item.column() == 2 and float(item.text()) != 0:
                 rate = float(item.text())
                 storage_item = self.service_storage[self.service_ui.left_table.item(item.row(), 0).text()]
+                print(storage_item.rate_price)
                 if storage_item.rate == rate:
-                    self.service_ui.left_table.setItem(item.row(), 3, QTableWidgetItem(str(storage_item.rate_price)))
                     return
 
                 cost = self.service_ui.left_table.item(item.row(), 3)
@@ -293,6 +291,7 @@ class MainWindow(QMainWindow):
                 amount = float(total.text())
                 amount -= storage_item.rate_price
                 storage_item.rate = rate
+                print(storage_item.rate_price)
                 amount += storage_item.rate_price
                 total.setText(str(amount))
 
