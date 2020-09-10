@@ -248,6 +248,10 @@ class MainWindow(QMainWindow):
                 if i != 2:
                     qitem.setFlags(Qt.ItemIsEnabled)
                 self.service_ui.left_table.setItem(row_pos, i, qitem)
+            total = self.service_ui.left_table.item(self.service_ui.left_table.rowCount()-1, 3)
+            amount = float(total.text())
+            amount += item.rate_price
+            total.setText(str(int(amount)))
 
         @Slot()
         def delete_row(self):
@@ -281,17 +285,15 @@ class MainWindow(QMainWindow):
             if item.column() == 2 and float(item.text()) != 0:
                 rate = float(item.text())
                 storage_item = self.service_storage[self.service_ui.left_table.item(item.row(), 0).text()]
-                print(storage_item.rate_price)
                 if storage_item.rate == rate:
                     return
 
-                cost = self.service_ui.left_table.item(item.row(), 3)
-                cost.setText(str(storage_item.rate_price))
                 total = self.service_ui.left_table.item(self.service_ui.left_table.rowCount() - 1, 3)
                 amount = float(total.text())
                 amount -= storage_item.rate_price
                 storage_item.rate = rate
-                print(storage_item.rate_price)
+                cost = self.service_ui.left_table.item(item.row(), 3)
+                cost.setText(str(storage_item.rate_price))
                 amount += storage_item.rate_price
                 total.setText(str(amount))
 
