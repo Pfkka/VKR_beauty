@@ -5,7 +5,7 @@ from main_form_1 import Ui_MainWindow
 from create_form import Ui_Form
 from create_service_form import Ui_Service_form
 from PySide2.QtWidgets import QMainWindow, QWidget, QApplication, QTableWidget, QTableWidgetItem, QAbstractItemView, \
-    QHeaderView
+    QHeaderView, QPushButton
 from PySide2.QtCore import Slot, QSettings, QSize, QPoint, Qt, Signal
 
 
@@ -20,11 +20,26 @@ class Item:
         self.rate_price = rate_price if rate_price is not None else 0
         self.current_volume = nominal_volume if not current_volume else current_volume
 
-    def one_use(self):
-        if self.current_volume > self.rate:
-            self.current_volume -= self.rate
+    def one_use(self, flag: bool, storage):
+        if flag:
+            if self.current_volume > self.rate:
+                self.current_volume -= self.rate
+            else:
+                rng = self.current_volume - self.rate
+                if self.quantity > 0:
+                    self.current_volume = self.nominal + rng  # rng < 0
+                    self.quantity -= 1
+                    storage[self.name].quantity -= 1
+                else:
+                    print("Item is empty !!!")
         else:
-            pass  # забрать со склада новую пачку - обновить объем - в случае чего изменить цену и объем пачки
+            if self.rate + self.current_volume <= self.nominal:
+                self.current_volume += self.rate
+            else:
+                rng = self.rate + self.current_volume - self.nominal  # rng >0
+                self.current_volume = rng
+                self.quantity += 1
+                storage[self.name].quantity += 1
 
     @property
     def rate(self):
@@ -133,6 +148,10 @@ class Service:
         item = self.service_storage[item.name]
         if item.quantity == 0:
             print(f"{item.name} is empty !!!")
+
+    def use(self, flag: bool, storage):
+        for item in self.service_storage:
+            self.service_storage[item].one_use(flag, storage)
 
     def service_to_dict(self):
         dict_sevice = dict()
@@ -248,7 +267,7 @@ class MainWindow(QMainWindow):
                 if i != 2:
                     qitem.setFlags(Qt.ItemIsEnabled)
                 self.service_ui.left_table.setItem(row_pos, i, qitem)
-            total = self.service_ui.left_table.item(self.service_ui.left_table.rowCount()-1, 3)
+            total = self.service_ui.left_table.item(self.service_ui.left_table.rowCount() - 1, 3)
             amount = float(total.text())
             amount += item.rate_price
             total.setText(str(int(amount)))
@@ -417,7 +436,27 @@ class MainWindow(QMainWindow):
         self.main_ui.total_list.verticalHeader().setVisible(False)
         self.main_ui.total_list.setShowGrid(False)
         self.main_ui.total_list.setItem(0, 0, QTableWidgetItem("Стоимость склада:"))
+
+        self.plus_button = QPushButton("Plus")
+        self.minus_button = QPushButton("Minus")
+        self.plus_button.pressed.connect(self.plus)
+        self.minus_button.pressed.connect(self.minus)
+
         self.readSettings()
+
+    @Slot()
+    def plus(self):
+        service_table = self.main_ui.list_of_services
+        service = self.services[service_table.item(service_table.currentRow(), 0).text(), self.storage]
+        service.use(flag=True)
+        self.update_list_storage()
+
+    @Slot()
+    def minus(self):
+        service_table = self.main_ui.list_of_services
+        service = self.services[service_table.item(service_table.currentRow(), 0).text()]
+        service.use(flag=False)
+        self.update_list_storage()
 
     @Slot()
     def edit_storage_row(self, current_name, current_volume, name, volume, quantity, price):
@@ -523,8 +562,8 @@ class MainWindow(QMainWindow):
         table_services.setItem(row_pos, 0, QTableWidgetItem(service.name))
         table_services.setItem(row_pos, 1, QTableWidgetItem(str(service.service_price)))
         table_services.setItem(row_pos, 2, QTableWidgetItem(str(service.cost_price)))
-        table_services.setItem(row_pos, 3, QTableWidgetItem("In work"))
-        table_services.setItem(row_pos, 4, QTableWidgetItem("In work"))
+        table_services.setCellWidget(row_pos, 3, self.plus_button)
+        table_services.setCellWidget(row_pos, 4, self.minus_button)
 
     @Slot()
     def edit_service(self):
@@ -543,7 +582,7 @@ class MainWindow(QMainWindow):
     @Slot()
     def delete_service(self, current_row=None):
         table = self.main_ui.list_of_services
-        current_row = table.currentRow() if current_row else current_row
+        current_row = table.currentRow() if current_row is None else current_row
         service_name = table.item(current_row, 0).text()
         del self.services[service_name]
         table.removeRow(current_row)
