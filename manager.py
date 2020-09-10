@@ -29,7 +29,7 @@ class Item:
                 if self.quantity > 0:
                     self.current_volume = self.nominal + rng  # rng < 0
                     self.quantity -= 1
-                    storage[self.name].quantity -= 1
+                    storage[self.name][self.nominal].quantity -= 1
                 else:
                     print("Item is empty !!!")
         else:
@@ -39,7 +39,7 @@ class Item:
                 rng = self.rate + self.current_volume - self.nominal  # rng >0
                 self.current_volume = rng
                 self.quantity += 1
-                storage[self.name].quantity += 1
+                storage[self.name][self.nominal].quantity += 1
 
     @property
     def rate(self):
@@ -447,15 +447,15 @@ class MainWindow(QMainWindow):
     @Slot()
     def plus(self):
         service_table = self.main_ui.list_of_services
-        service = self.services[service_table.item(service_table.currentRow(), 0).text(), self.storage]
-        service.use(flag=True)
+        service = self.services[service_table.item(service_table.currentRow(), 0).text()]
+        service.use(True, self.storage)
         self.update_list_storage()
 
     @Slot()
     def minus(self):
         service_table = self.main_ui.list_of_services
         service = self.services[service_table.item(service_table.currentRow(), 0).text()]
-        service.use(flag=False)
+        service.use(False, self.storage)
         self.update_list_storage()
 
     @Slot()
