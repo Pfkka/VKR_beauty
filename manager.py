@@ -142,6 +142,8 @@ class Service:
         self.cost_price = cost_price  # себестоимость
         self.net_profit = service_price - cost_price
         self.service_storage = dict()
+        self.plus_button = QPushButton("Plus")
+        self.minus_button = QPushButton("Minus")
 
     def add_item(self, item: Item):
         self.service_storage[item.name] = copy(item)
@@ -437,11 +439,6 @@ class MainWindow(QMainWindow):
         self.main_ui.total_list.setShowGrid(False)
         self.main_ui.total_list.setItem(0, 0, QTableWidgetItem("Стоимость склада:"))
 
-        self.plus_button = QPushButton("Plus")
-        self.minus_button = QPushButton("Minus")
-        self.plus_button.pressed.connect(self.plus)
-        self.minus_button.pressed.connect(self.minus)
-
         self.readSettings()
 
     @Slot()
@@ -551,6 +548,8 @@ class MainWindow(QMainWindow):
     @Slot()
     def create_service(self, name: str, service_price: int, service_storage: dict, cost_price: float):
         service = Service(name, service_price, cost_price)
+        service.plus_button.pressed.connect(self.plus)
+        service.minus_button.pressed.connect(self.minus)
         for item in service_storage:
             service.add_item(service_storage[item])
         self.services[service.name] = service
@@ -562,8 +561,8 @@ class MainWindow(QMainWindow):
         table_services.setItem(row_pos, 0, QTableWidgetItem(service.name))
         table_services.setItem(row_pos, 1, QTableWidgetItem(str(service.service_price)))
         table_services.setItem(row_pos, 2, QTableWidgetItem(str(service.cost_price)))
-        table_services.setCellWidget(row_pos, 3, self.plus_button)
-        table_services.setCellWidget(row_pos, 4, self.minus_button)
+        table_services.setCellWidget(row_pos, 3, service.plus_button)
+        table_services.setCellWidget(row_pos, 4, service.minus_button)
 
     @Slot()
     def edit_service(self):
@@ -577,7 +576,6 @@ class MainWindow(QMainWindow):
     def edit_service_row(self, name: str, service_price: int, service_storage: dict, cost_price: float, current_row):
         self.delete_service(current_row)
         self.create_service(name, service_price, service_storage, cost_price)
-        print(self.services)
 
     @Slot()
     def delete_service(self, current_row=None):
