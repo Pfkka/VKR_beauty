@@ -26,7 +26,7 @@ class Item:
                 self.current_volume -= self.rate
             else:
                 rng = self.current_volume - self.rate
-                if self.quantity > 0:
+                if self.quantity > 1:
                     self.current_volume = self.nominal + rng  # rng < 0
                     self.quantity -= 1
                     storage[self.name][self.nominal].quantity -= 1
