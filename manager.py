@@ -5,26 +5,41 @@ from main_form_1 import Ui_MainWindow
 from create_form import Ui_Form
 from create_service_form import Ui_Service_form
 from PySide2.QtWidgets import QMainWindow, QWidget, QApplication, QTableWidget, QTableWidgetItem, QAbstractItemView, \
-    QHeaderView
+    QHeaderView, QPushButton
 from PySide2.QtCore import Slot, QSettings, QSize, QPoint, Qt, Signal
 
 
 class Item:
-    def __init__(self, name: str, nominal_volume: int, quantity: int, price: int, rate=0, rate_price=0,
+    def __init__(self, name: str, nominal_volume: int, quantity: int, price: int, rate=0, rate_price=None,
                  current_volume=None):
         self.name = name.capitalize()
         self.nominal = nominal_volume
         self.quantity = quantity
         self.price = price
         self.rt = rate
-        self.rate_price = rate_price
+        self.rate_price = rate_price if rate_price is not None else 0
         self.current_volume = nominal_volume if not current_volume else current_volume
 
-    def one_use(self):
-        if self.current_volume > self.rate:
-            self.current_volume -= self.rate
+    def one_use(self, flag: bool, storage):
+        if flag:
+            if self.current_volume > self.rate:
+                self.current_volume -= self.rate
+            else:
+                rng = self.current_volume - self.rate
+                if self.quantity > 1:
+                    self.current_volume = self.nominal + rng  # rng < 0
+                    self.quantity -= 1
+                    storage[self.name][self.nominal].quantity -= 1
+                else:
+                    print("Item is empty !!!")
         else:
-            pass  # забрать со склада новую пачку - обновить объем - в случае чего изменить цену и объем пачки
+            if self.rate + self.current_volume <= self.nominal:
+                self.current_volume += self.rate
+            else:
+                rng = self.rate + self.current_volume - self.nominal  # rng >0
+                self.current_volume = rng
+                self.quantity += 1
+                storage[self.name][self.nominal].quantity += 1
 
     @property
     def rate(self):
@@ -127,12 +142,18 @@ class Service:
         self.cost_price = cost_price  # себестоимость
         self.net_profit = service_price - cost_price
         self.service_storage = dict()
+        self.plus_button = QPushButton("Plus")
+        self.minus_button = QPushButton("Minus")
 
     def add_item(self, item: Item):
         self.service_storage[item.name] = copy(item)
         item = self.service_storage[item.name]
         if item.quantity == 0:
             print(f"{item.name} is empty !!!")
+
+    def use(self, flag: bool, storage):
+        for item in self.service_storage:
+            self.service_storage[item].one_use(flag, storage)
 
     def service_to_dict(self):
         dict_sevice = dict()
@@ -153,14 +174,15 @@ class Service:
 class MainWindow(QMainWindow):
     class ServiceForm(QWidget):
         data_set = Signal(str, float, dict, float)
+        data_change = Signal(str, float, dict, float, int)
 
-        def __init__(self, storage, service, total=0):
+        def __init__(self, storage, service_list, service: Service = None, current_row=None, total=0):
             super().__init__()
             self.service_ui = Ui_Service_form()
             self.service_ui.setupUi(self)
             self.right_storage = storage
-            self.service_storage = dict()
-            self.list_of_services = service
+            self.list_of_services = service_list
+            self.current_row = current_row
 
             self.service_ui.right_table.setSortingEnabled(True)
             self.service_ui.right_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -194,6 +216,15 @@ class MainWindow(QMainWindow):
 
             self.service_ui.addButton.clicked.connect(self.apply)
             self.service_ui.cancelButton.clicked.connect(self.close)
+            if service is not None:
+                self.service_storage = service.service_storage
+                self.service_ui.service_name_lineEdit.setText(service.name)
+                self.service_ui.service_price_lineEdit.setText(str(int(service.service_price)))
+                for item in self.service_storage:
+                    self.add_item(item=self.service_storage[item])
+                self.set_total()
+            else:
+                self.service_storage = dict()
             self.readSettings()
 
         def load_right_table(self):
@@ -214,20 +245,22 @@ class MainWindow(QMainWindow):
                 return
             service_price = float(service_price)
             cost_price = float(self.service_ui.left_table.item(self.service_ui.left_table.rowCount() - 1, 3).text())
-            self.data_set.emit(service_name, service_price, self.service_storage, cost_price)
+            if self.current_row is not None:
+                self.data_change.emit(service_name, service_price, self.service_storage, cost_price, self.current_row)
+            else:
+                self.data_set.emit(service_name, service_price, self.service_storage, cost_price)
             self.close()
 
         @Slot()
-        def add_item(self):
-            current_name = self.service_ui.right_table.item(self.service_ui.right_table.currentRow(), 0).text()
-            volume = int(self.service_ui.right_table.item(self.service_ui.right_table.currentRow(), 1).text())
+        def add_item(self, q=None, item=None):
+            if item is None:
+                current_name = self.service_ui.right_table.item(self.service_ui.right_table.currentRow(), 0).text()
+                volume = int(self.service_ui.right_table.item(self.service_ui.right_table.currentRow(), 1).text())
 
-            item = self.right_storage[current_name][volume]
-            if item.name in self.service_storage:
-                return
-
-            self.service_storage[item.name] = item
-
+                item = self.right_storage[current_name][volume]
+                if item.name in self.service_storage:
+                    return
+                self.service_storage[item.name] = item
             names = {0: item.name, 1: f"{item.nominal}/{item.current_volume}", 2: item.rate, 3: item.rate_price}
             row_pos = self.service_ui.left_table.rowCount() - 1
             self.service_ui.left_table.insertRow(row_pos)
@@ -236,11 +269,20 @@ class MainWindow(QMainWindow):
                 if i != 2:
                     qitem.setFlags(Qt.ItemIsEnabled)
                 self.service_ui.left_table.setItem(row_pos, i, qitem)
+            total = self.service_ui.left_table.item(self.service_ui.left_table.rowCount() - 1, 3)
+            amount = float(total.text())
+            amount += item.rate_price
+            total.setText(str(int(amount)))
 
         @Slot()
         def delete_row(self):
             current_row = self.service_ui.left_table.currentRow()
             if self.service_ui.left_table.currentColumn() != 2 and current_row != self.service_ui.left_table.rowCount() - 1:
+                item = self.service_storage[self.service_ui.left_table.item(current_row, 0).text()]
+                total = self.service_ui.left_table.item(self.service_ui.left_table.rowCount() - 1, 3)
+                amount = float(total.text())
+                amount -= item.rate_price
+                total.setText(str(amount))
                 del self.service_storage[self.service_ui.left_table.item(current_row, 0).text()]
                 self.service_ui.left_table.removeRow(current_row)
 
@@ -267,14 +309,21 @@ class MainWindow(QMainWindow):
                 if storage_item.rate == rate:
                     return
 
-                cost = self.service_ui.left_table.item(item.row(), 3)
-                cost.setText(str(storage_item.rate_price))
                 total = self.service_ui.left_table.item(self.service_ui.left_table.rowCount() - 1, 3)
                 amount = float(total.text())
                 amount -= storage_item.rate_price
                 storage_item.rate = rate
+                cost = self.service_ui.left_table.item(item.row(), 3)
+                cost.setText(str(storage_item.rate_price))
                 amount += storage_item.rate_price
                 total.setText(str(amount))
+
+        def set_total(self):
+            total = 0
+            for item in self.service_storage:
+                total += self.service_storage[item].rate_price
+            qitem = self.service_ui.left_table.item(self.service_ui.left_table.rowCount() - 1, 3)
+            qitem.setText(f"{total}")
 
         def closeEvent(self, event: QCloseEvent):
             self.writeSettings()
@@ -360,8 +409,10 @@ class MainWindow(QMainWindow):
         self.main_ui.edit_materialButton.pressed.connect(self.edit_storage_item)
         self.main_ui.delete_materialButton.pressed.connect(self.delete_storage_item)
         self.main_ui.list_of_materials.itemDoubleClicked.connect(self.edit_storage_item)
-
+        self.main_ui.delete_serviceButton.pressed.connect(self.delete_service)
         self.main_ui.add_serviceButton.pressed.connect(self.add_service)
+        self.main_ui.edit_serviceButton.pressed.connect(self.edit_service)
+        self.main_ui.list_of_services.itemDoubleClicked.connect(self.edit_service)
 
         self.main_ui.list_of_materials.setSortingEnabled(True)
         self.main_ui.list_of_materials.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -387,7 +438,22 @@ class MainWindow(QMainWindow):
         self.main_ui.total_list.verticalHeader().setVisible(False)
         self.main_ui.total_list.setShowGrid(False)
         self.main_ui.total_list.setItem(0, 0, QTableWidgetItem("Стоимость склада:"))
+
         self.readSettings()
+
+    @Slot()
+    def plus(self):
+        service_table = self.main_ui.list_of_services
+        service = self.services[service_table.item(service_table.currentRow(), 0).text()]
+        service.use(True, self.storage)
+        self.update_list_storage()
+
+    @Slot()
+    def minus(self):
+        service_table = self.main_ui.list_of_services
+        service = self.services[service_table.item(service_table.currentRow(), 0).text()]
+        service.use(False, self.storage)
+        self.update_list_storage()
 
     @Slot()
     def edit_storage_row(self, current_name, current_volume, name, volume, quantity, price):
@@ -482,6 +548,8 @@ class MainWindow(QMainWindow):
     @Slot()
     def create_service(self, name: str, service_price: int, service_storage: dict, cost_price: float):
         service = Service(name, service_price, cost_price)
+        service.plus_button.pressed.connect(self.plus)
+        service.minus_button.pressed.connect(self.minus)
         for item in service_storage:
             service.add_item(service_storage[item])
         self.services[service.name] = service
@@ -493,8 +561,29 @@ class MainWindow(QMainWindow):
         table_services.setItem(row_pos, 0, QTableWidgetItem(service.name))
         table_services.setItem(row_pos, 1, QTableWidgetItem(str(service.service_price)))
         table_services.setItem(row_pos, 2, QTableWidgetItem(str(service.cost_price)))
-        table_services.setItem(row_pos, 3, QTableWidgetItem("In work"))
-        table_services.setItem(row_pos, 4, QTableWidgetItem("In work"))
+        table_services.setCellWidget(row_pos, 3, service.plus_button)
+        table_services.setCellWidget(row_pos, 4, service.minus_button)
+
+    @Slot()
+    def edit_service(self):
+        current_row = self.main_ui.list_of_services.currentRow()
+        service = self.services[self.main_ui.list_of_services.item(current_row, 0).text()]
+        self.service_form = self.ServiceForm(self.storage, self.main_ui.list_of_services, service, current_row)
+        self.service_form.data_change.connect(self.edit_service_row)
+        self.service_form.show()
+
+    @Slot()
+    def edit_service_row(self, name: str, service_price: int, service_storage: dict, cost_price: float, current_row):
+        self.delete_service(current_row)
+        self.create_service(name, service_price, service_storage, cost_price)
+
+    @Slot()
+    def delete_service(self, current_row=None):
+        table = self.main_ui.list_of_services
+        current_row = table.currentRow() if current_row is None else current_row
+        service_name = table.item(current_row, 0).text()
+        del self.services[service_name]
+        table.removeRow(current_row)
 
     @Slot()
     def add_material(self):
