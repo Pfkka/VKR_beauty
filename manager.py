@@ -144,6 +144,7 @@ class Service:
         self.service_storage = dict()
         self.plus_button = QPushButton("Plus")
         self.minus_button = QPushButton("Minus")
+        self.used_times = 0
 
     def add_item(self, item: Item):
         self.service_storage[item.name] = copy(item)
@@ -154,6 +155,7 @@ class Service:
     def use(self, flag: bool, storage):
         for item in self.service_storage:
             self.service_storage[item].one_use(flag, storage)
+        self.used_times += 1 if flag else (-1)
 
     def service_to_dict(self):
         dict_sevice = dict()
@@ -425,8 +427,9 @@ class MainWindow(QMainWindow):
 
         self.main_ui.list_of_services.setSortingEnabled(True)
         self.main_ui.list_of_services.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.main_ui.list_of_services.setColumnCount(5)
-        self.main_ui.list_of_services.setHorizontalHeaderLabels(["Название", "Цена", "Себестоимость", "+1", "-1"])
+        self.main_ui.list_of_services.setColumnCount(6)
+        self.main_ui.list_of_services.setHorizontalHeaderLabels(["Название", "Цена", "Себестоимость", "+1", "-1",
+                                                                 "Сделано раз"])
         header = self.main_ui.list_of_services.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeToContents)
         header.setSectionResizeMode(0, QHeaderView.Stretch)
@@ -444,15 +447,20 @@ class MainWindow(QMainWindow):
     @Slot()
     def plus(self):
         service_table = self.main_ui.list_of_services
-        service = self.services[service_table.item(service_table.currentRow(), 0).text()]
+        current_row = service_table.currentRow()
+        service = self.services[service_table.item(current_row, 0).text()]
         service.use(True, self.storage)
+        item = self.main_ui.list_of_services.item(current_row, 5)
+        item.setText(f"{service.used_times}")
         self.update_list_storage()
 
     @Slot()
     def minus(self):
         service_table = self.main_ui.list_of_services
-        service = self.services[service_table.item(service_table.currentRow(), 0).text()]
+        current_row = service_table.currentRow()
+        service = self.services[service_table.item(current_row, 0).text()]
         service.use(False, self.storage)
+        self.main_ui.list_of_services.item(current_row, 5).setText(f"{service.used_times}")
         self.update_list_storage()
 
     @Slot()
@@ -563,6 +571,7 @@ class MainWindow(QMainWindow):
         table_services.setItem(row_pos, 2, QTableWidgetItem(str(service.cost_price)))
         table_services.setCellWidget(row_pos, 3, service.plus_button)
         table_services.setCellWidget(row_pos, 4, service.minus_button)
+        table_services.setItem(row_pos, 5, QTableWidgetItem(str(service.used_times)))
 
     @Slot()
     def edit_service(self):
@@ -630,7 +639,10 @@ class MainWindow(QMainWindow):
 
     def total_storage_update(self):
         self.storage.sum_total_amount()
-        self.main_ui.total_list.item(0, 1).setText(f"{self.storage.total_amount} руб")
+        item = self.main_ui.total_list.item(0, 1)
+        item.setText(f"{self.storage.total_amount} руб")
+        header = self.main_ui.total_list.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeToContents)
 
     def closeEvent(self, event: QCloseEvent):
         self.writeSettings()
