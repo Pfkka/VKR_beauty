@@ -5,7 +5,7 @@ from main_form_1 import Ui_MainWindow
 from create_form import Ui_Form
 from create_service_form import Ui_Service_form
 from PySide2.QtWidgets import QMainWindow, QWidget, QApplication, QTableWidget, QTableWidgetItem, QAbstractItemView, \
-    QHeaderView, QPushButton
+    QHeaderView, QPushButton, QMessageBox
 from PySide2.QtCore import Slot, QSettings, QSize, QPoint, Qt, Signal
 
 
@@ -21,6 +21,8 @@ class Item:
         self.current_volume = nominal_volume if not current_volume else current_volume
 
     def one_use(self, flag: bool, storage):
+        if self.quantity != storage[self.name][self.nominal].quantity:
+            self.quantity = storage[self.name][self.nominal].quantity
         if flag:
             if self.current_volume > self.rate:
                 self.current_volume -= self.rate
@@ -132,9 +134,6 @@ class Storage:
 
 
 class Service:
-
-    # class ServiceItem:
-    #     def __init__(self, service_name: str, service_price: float, service_storage):
 
     def __init__(self, name: str, service_price: int, cost_price: float):
         self.name = name
