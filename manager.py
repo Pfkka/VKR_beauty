@@ -33,7 +33,7 @@ class Item:
                     self.quantity -= 1
                     storage[self.name][self.nominal].quantity -= 1
                 else:
-                    print("Item is empty !!!")
+                    return self.name
         else:
             if self.rate + self.current_volume <= self.nominal:
                 self.current_volume += self.rate
@@ -67,7 +67,7 @@ class Storage:
     def add_item(self, item: Item):
         try:
             if self._boxes[item.name][item.nominal].nominal == item.nominal:
-                print("Item is exist")
+                return item.name
         except KeyError:
             try:
                 self._boxes[item.name].update({item.nominal: item})
@@ -77,7 +77,8 @@ class Storage:
     def edit_box(self, current_name: str, current_nominal_volume: int, name: str, nominal_volume: int, quantity: int,
                  price: int):
         del self._boxes[current_name][current_nominal_volume]
-        self.add_item(Item(name, nominal_volume, quantity, price))
+        is_exist = self.add_item(Item(name, nominal_volume, quantity, price))
+        return is_exist
 
     def delete_item(self, name: str, volume: int):
         try:
@@ -147,19 +148,24 @@ class Service:
 
     def add_item(self, item: Item):
         self.service_storage[item.name] = copy(item)
-        item = self.service_storage[item.name]
-        if item.quantity == 0:
-            print(f"{item.name} is empty !!!")
+        # item = self.service_storage[item.name]
+        # if item.quantity == 0:
+        #     print(f"{item.name} is empty !!!")
 
     def use(self, flag: bool, storage):
+        empty_items = []
         for item in self.service_storage:
-            self.service_storage[item].one_use(flag, storage)
+            empty_item = self.service_storage[item].one_use(flag, storage)
+            if isinstance(empty_item, str):
+                empty_items.append(empty_item)
         self.used_times += 1 if flag else (-1)
+        return empty_items
 
     def service_to_dict(self):
         dict_sevice = dict()
         dict_sevice["cost_price"] = self.cost_price
         dict_sevice["service_price"] = self.service_price
+        dict_sevice["service_use"] = self.used_times
         dict_sevice["items"] = dict()
         for item in self.service_storage:
             dict_sevice["items"][item] = {"name": self.service_storage[item].name,
@@ -448,7 +454,10 @@ class MainWindow(QMainWindow):
         service_table = self.main_ui.list_of_services
         current_row = service_table.currentRow()
         service = self.services[service_table.item(current_row, 0).text()]
-        service.use(True, self.storage)
+        empty = service.use(True, self.storage)
+        if empty:
+            self.msg(empty)
+            return
         item = self.main_ui.list_of_services.item(current_row, 5)
         item.setText(f"{service.used_times}")
         self.update_list_storage()
@@ -464,8 +473,11 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def edit_storage_row(self, current_name, current_volume, name, volume, quantity, price):
-        self.storage.edit_box(current_name, int(current_volume), name, int(volume), int(quantity),
-                              int(price))
+        is_exist = self.storage.edit_box(current_name, int(current_volume), name, int(volume), int(quantity),
+                                         int(price))
+        if isinstance(is_exist, str):
+            self.msg(is_exist)
+            return
         row_pos = self.main_ui.list_of_materials.currentRow()
         self.main_ui.list_of_materials.item(row_pos, 0).setText(name)
         self.main_ui.list_of_materials.item(row_pos, 1).setText(volume)
@@ -476,13 +488,16 @@ class MainWindow(QMainWindow):
     @Slot()
     def add_storage_row(self, name, volume, quantity, price):
         item = Item(name, int(volume), int(quantity), int(price))
+        is_exist = self.storage.add_item(item)
+        if isinstance(is_exist, str):
+            self.msg(is_exist)
+            return
         row_pos = self.main_ui.list_of_materials.rowCount()
         self.main_ui.list_of_materials.insertRow(row_pos)
         self.main_ui.list_of_materials.setItem(row_pos, 0, QTableWidgetItem(name))
         self.main_ui.list_of_materials.setItem(row_pos, 1, QTableWidgetItem(volume))
         self.main_ui.list_of_materials.setItem(row_pos, 2, QTableWidgetItem(quantity))
         self.main_ui.list_of_materials.setItem(row_pos, 3, QTableWidgetItem(price))
-        self.storage.add_item(item)
         self.total_storage_update()
 
     def writeSettings(self):
@@ -533,6 +548,7 @@ class MainWindow(QMainWindow):
                     service_name = service
                     service_price = data[service]["service_price"]
                     service_cost_price = data[service]["cost_price"]
+                    service_used_times = data[service]["service_use"]
                     items = dict()
                     for item in data[service]["items"]:
                         current_item = data[service]["items"][item]
@@ -540,7 +556,7 @@ class MainWindow(QMainWindow):
                                    current_item["price"], current_item["rate"], current_item["rate_price"],
                                    current_item["current_volume"])
                         items[itm.name] = itm
-                    self.create_service(service_name, service_price, items, service_cost_price)
+                    self.create_service(service_name, service_price, items, service_cost_price, service_used_times)
 
         except FileNotFoundError:
             with open("services.json", "wt") as file:
@@ -553,8 +569,10 @@ class MainWindow(QMainWindow):
         self.service_form.show()
 
     @Slot()
-    def create_service(self, name: str, service_price: int, service_storage: dict, cost_price: float):
+    def create_service(self, name: str, service_price: int, service_storage: dict, cost_price: float,
+                       service_used_times: int):
         service = Service(name, service_price, cost_price)
+        service.used_times = service_used_times
         service.plus_button.pressed.connect(self.plus)
         service.minus_button.pressed.connect(self.minus)
         for item in service_storage:
@@ -629,6 +647,12 @@ class MainWindow(QMainWindow):
             self.total_storage_update()
         else:
             return
+
+    def msg(self, items):
+        if isinstance(items, str):
+            msg = QMessageBox.warning(self, "Предупреждение", f"{items} уже существуют !")
+        elif isinstance(items, list):
+            msg = QMessageBox.warning(self, "Предупреждение", f"Недостаточно {items} !")
 
     def update_list_storage(self):
         for item in self.storage:
