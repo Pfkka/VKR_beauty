@@ -136,7 +136,7 @@ class Storage:
 
 class Service:
 
-    def __init__(self, name: str, service_price: int, cost_price: float):
+    def __init__(self, name: str, service_price: int, cost_price: float, used_times=0):
         self.name = name
         self.service_price = service_price
         self.cost_price = cost_price  # себестоимость
@@ -144,7 +144,7 @@ class Service:
         self.service_storage = dict()
         self.plus_button = QPushButton("Plus")
         self.minus_button = QPushButton("Minus")
-        self.used_times = 0
+        self.used_times = used_times
 
     def add_item(self, item: Item):
         self.service_storage[item.name] = copy(item)
@@ -570,7 +570,7 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def create_service(self, name: str, service_price: int, service_storage: dict, cost_price: float,
-                       service_used_times: int):
+                       service_used_times: int = 0):
         service = Service(name, service_price, cost_price)
         service.used_times = service_used_times
         service.plus_button.pressed.connect(self.plus)

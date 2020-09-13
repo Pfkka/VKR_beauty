@@ -127,3 +127,6 @@ dmypy.json
 storage.json
 services.json
 problems.txt
+Beauty.spec
+.dist
+.build
