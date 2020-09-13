@@ -158,8 +158,8 @@ class Service:
             empty_item = self.service_storage[item].one_use(flag, storage)
             if isinstance(empty_item, str):
                 empty_items.append(empty_item)
+                return empty_items
         self.used_times += 1 if flag else (-1)
-        return empty_items
 
     def service_to_dict(self):
         dict_sevice = dict()
