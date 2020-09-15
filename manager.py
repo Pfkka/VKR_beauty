@@ -161,6 +161,11 @@ class Service:
                 return empty_items
         self.used_times += 1 if flag else (-1)
 
+    def sum_cost_price(self):
+        self.cost_price = 0
+        for item in self.service_storage:
+            self.cost_price += self.service_storage[item].rate_price
+
     def service_to_dict(self):
         dict_sevice = dict()
         dict_sevice["cost_price"] = self.cost_price
@@ -480,7 +485,12 @@ class MainWindow(QMainWindow):
     @Slot()
     def edit_service(self):
         current_row = self.main_ui.list_of_services.currentRow()
+        current_column = self.main_ui.list_of_services.currentColumn()
         service = self.services[self.main_ui.list_of_services.item(current_row, 0).text()]
+        if current_column == 5:
+            service.used_times = 0
+            self.main_ui.list_of_services.item(current_row, current_column).setText("0")
+            return
         self.service_form = self.ServiceForm(self.storage, self.main_ui.list_of_services, service, current_row)
         self.service_form.data_change.connect(self.edit_service_row)
         self.service_form.show()
@@ -539,12 +549,26 @@ class MainWindow(QMainWindow):
             return
 
     @Slot()
-    def edit_storage_row(self, current_name, current_volume, name, volume, quantity, price):
+    def edit_storage_row(self, current_name: str, current_volume: str, name: str, volume: str, quantity: str,
+                         price: str):
         is_exist = self.storage.edit_box(current_name, int(current_volume), name, int(volume), int(quantity),
                                          int(price))
         if isinstance(is_exist, str):
             self.msg(is_exist)
             return
+        for service in self.services:
+            if current_name in self.services[service].service_storage:
+                service_item: Item = self.services[service].service_storage.pop(current_name)
+                service_item.name = name
+                service_item.nominal = int(volume)
+                service_item.quantity = int(quantity)
+                service_item.price = int(price)
+                service_item.rate = service_item.rate
+                self.services[service].service_storage[name] = service_item
+                self.services[service].sum_cost_price()
+                service_row = self.main_ui.list_of_services.findItems(self.services[service].name, Qt.MatchFixedString)[
+                    0].row()
+                self.main_ui.list_of_services.item(service_row, 2).setText(str(self.services[service].cost_price))
         row_pos = self.main_ui.list_of_materials.currentRow()
         self.main_ui.list_of_materials.item(row_pos, 0).setText(name)
         self.main_ui.list_of_materials.item(row_pos, 1).setText(volume)
@@ -561,6 +585,13 @@ class MainWindow(QMainWindow):
             self.main_ui.list_of_materials.removeRow(row_now)
             self.storage.delete_item(current_name, current_volume)
             self.total_storage_update()
+            for service in self.services:
+                if current_name in self.services[service].service_storage:
+                    del self.services[service].service_storage[current_name]
+                    self.services[service].sum_cost_price()
+                    service_row = \
+                    self.main_ui.list_of_services.findItems(self.services[service].name, Qt.MatchFixedString)[0].row()
+                    self.main_ui.list_of_services.item(service_row, 2).setText(str(self.services[service].cost_price))
         else:
             return
 
