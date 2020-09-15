@@ -142,8 +142,8 @@ class Service:
         self.cost_price = cost_price  # себестоимость
         self.net_profit = service_price - cost_price
         self.service_storage = dict()
-        self.plus_button = QPushButton("Plus")
-        self.minus_button = QPushButton("Minus")
+        self.plus_button = QPushButton("Сделать")
+        self.minus_button = QPushButton("Откатить")
         self.used_times = used_times
 
     def add_item(self, item: Item):
