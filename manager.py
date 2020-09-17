@@ -1,5 +1,6 @@
 import json
 from copy import copy
+from typing import Any
 from PySide2.QtGui import QCloseEvent
 from main_form_1 import Ui_MainWindow
 from create_form import Ui_Form
@@ -10,8 +11,23 @@ from PySide2.QtCore import Slot, QSettings, QSize, QPoint, Qt, Signal
 
 
 class Item:
+    """
+    Класс для создания предметов.
+    """
+
     def __init__(self, name: str, nominal_volume: int, quantity: int, price: int, rate=0, rate_price=None,
                  current_volume=None):
+        """
+        Для создания предмета необходимо подать его имя, номинальный объем упаковки, количество таких упаковок, цену за
+        единицу. При необходимости можно задать расход на услугу, себестоимость за 1 применение и текущий объем пачки.
+        :param name: str
+        :param nominal_volume: int
+        :param quantity: int
+        :param price: int
+        :param rate: int
+        :param rate_price: float
+        :param current_volume: int
+        """
         self.name = name.capitalize()
         self.nominal = nominal_volume
         self.quantity = quantity
@@ -21,6 +37,12 @@ class Item:
         self.current_volume = nominal_volume if not current_volume else current_volume
 
     def one_use(self, flag: bool, storage):
+        """
+        Списывает/начисляет rate.
+        :param flag: True if minus rate, False if plus rate.
+        :param storage:
+        :return: str if quantity is not enough else None
+        """
         if self.quantity != storage[self.name][self.nominal].quantity:
             self.quantity = storage[self.name][self.nominal].quantity
         if flag:
@@ -60,11 +82,19 @@ class Item:
 
 
 class Storage:
+    """
+    Класс склада.
+    """
+
     def __init__(self):
         self._boxes = dict()
         self.total_amount = 0
 
     def add_item(self, item: Item):
+        """
+        Добавляет материал на склад.
+        :param item: Item
+        """
         try:
             if self._boxes[item.name][item.nominal].nominal == item.nominal:
                 return item.name
@@ -76,23 +106,46 @@ class Storage:
 
     def edit_box(self, current_name: str, current_nominal_volume: int, name: str, nominal_volume: int, quantity: int,
                  price: int):
+        """
+        Изменяет материал на складе.
+        :param current_name: str
+        :param current_nominal_volume: int
+        :param name: str
+        :param nominal_volume: int
+        :param quantity: int
+        :param price: int
+        :return: str if item is exist
+        """
         del self._boxes[current_name][current_nominal_volume]
         is_exist = self.add_item(Item(name, nominal_volume, quantity, price))
         return is_exist
 
     def delete_item(self, name: str, volume: int):
+        """
+        Удаляет предмет со склада.
+        :param name: str
+        :param volume: int
+        :return:
+        """
         try:
             del self._boxes[name][volume]
         except KeyError:
             print("Item not found")
 
     def sum_total_amount(self):
+        """
+        Считает стоимость материалов на складе.
+        """
         self.total_amount = 0
         for nominal in self._boxes:
             for item in self._boxes[nominal]:
                 self.total_amount += self._boxes[nominal][item].price * self._boxes[nominal][item].quantity
 
     def to_dict(self):
+        """
+        Сериализует объекты склада в словарь для сохранения в БД(json).
+        :return: dict
+        """
         dict_storage = dict()
         for item in self._boxes:
             dict_storage[item] = dict()
@@ -104,11 +157,17 @@ class Storage:
         return dict_storage
 
     def save_storage(self):
+        """
+        Сохраняет склад в БД(json).
+        """
         with open("storage.json", "wt") as file:
             dict_storage = self.to_dict()
             json.dump(dict_storage, file)
 
     def load_storage(self):
+        """
+        Загружает склад из БД(json).
+        """
         try:
             with open("storage.json", "rt") as file:
                 data = json.load(file)
@@ -135,8 +194,18 @@ class Storage:
 
 
 class Service:
+    """
+    Класс услуги. Объект класса хранит в себе перечень используемых предметов, название услуги и некоторые экономические
+    показатели.
+    """
 
-    def __init__(self, name: str, service_price: int, cost_price: float, used_times=0):
+    def __init__(self, name: str, service_price: int, cost_price: float, used_times: int = 0):
+        """
+        :param name: str
+        :param service_price: int
+        :param cost_price: float
+        :param used_times: int
+        """
         self.name = name
         self.service_price = service_price
         self.cost_price = cost_price  # себестоимость
@@ -147,26 +216,50 @@ class Service:
         self.used_times = used_times
 
     def add_item(self, item: Item):
+        """
+        Добавляет предмет в хранилище услуги.
+        :param item: Item
+        """
         self.service_storage[item.name] = copy(item)
         # item = self.service_storage[item.name]
         # if item.quantity == 0:
         #     print(f"{item.name} is empty !!!")
 
     def use(self, flag: bool, storage):
+        """
+        В зависимости от флага списывает или начисляет расход материалов услуги. Если недостаточно материала, вохвращает
+        список недостающих предметов.
+        :param flag: True if plus, False if minus
+        :param storage: dict
+        :return: list of empty items.
+        """
         empty_items = []
+        used_items = []
         for item in self.service_storage:
             empty_item = self.service_storage[item].one_use(flag, storage)
             if isinstance(empty_item, str):
                 empty_items.append(empty_item)
-                return empty_items
+            else:
+                used_items.append(self.service_storage[item])
+        if empty_items:
+            for item in used_items:
+                item.one_use(not flag, storage)
+            return empty_items
         self.used_times += 1 if flag else (-1)
 
     def sum_cost_price(self):
+        """
+        Считает себестоимость услуги.
+        """
         self.cost_price = 0
         for item in self.service_storage:
             self.cost_price += self.service_storage[item].rate_price
 
     def service_to_dict(self):
+        """
+        Сериализует объекты предметов услуги в словарь для дальнейшего сохранения в json.
+        :return: dict
+        """
         dict_sevice = dict()
         dict_sevice["cost_price"] = self.cost_price
         dict_sevice["service_price"] = self.service_price
@@ -184,11 +277,30 @@ class Service:
 
 
 class MainWindow(QMainWindow):
+    """
+    Класс основного окна прилождения, наследник QMainWindow. Содержит в себе такие классы используемых окон, как:
+    1. CreateForm(QWidget) - используется при добавлении и изменении предмета на складе
+    2. ServiceForm(QWidget) - используется при создании и изменении услуги.
+    """
+
     class ServiceForm(QWidget):
+        """
+        Класс окна для создания/редактирования услуги.
+        """
         data_set = Signal(str, float, dict, float)
         data_change = Signal(str, float, dict, float, int)
 
-        def __init__(self, storage, service_list, service: Service = None, current_row=None, total=0):
+        def __init__(self, storage: Storage, service_list: QTableWidget, service: Service = None,
+                     current_row: int = None, total: int = 0):
+            """
+            Для инициализация окна обязательно необходимы: склад, таблица с услугами. В случае редактирования услуги
+            необходимо дополниельно передать услугу, ее строку в таблице и себестоимость услуги.
+            :param storage: Storage
+            :param service_list: QTableWidget
+            :param service: Service
+            :param current_row: int
+            :param total: int
+            """
             super().__init__()
             self.service_ui = Ui_Service_form()
             self.service_ui.setupUi(self)
@@ -241,6 +353,10 @@ class MainWindow(QMainWindow):
 
         @Slot()
         def apply(self):
+            """
+            Обрабатывает нажатие на кнопку 'принять' и отправляет сигнал в соответствующий слот MainForm.
+            :return:
+            """
             service_name = self.service_ui.service_name_lineEdit.text().capitalize()
             service_price = self.service_ui.service_price_lineEdit.text()
             if not service_price.isdigit():
@@ -254,7 +370,12 @@ class MainWindow(QMainWindow):
             self.close()
 
         @Slot()
-        def add_item(self, q=None, item=None):
+        def add_item(self, q=None, item: Item = None):
+            """
+            Добавляет выбранный предмет на складе в хранилище услуги.
+            :param q: None everytime
+            :param item: Item
+            """
             if item is None:
                 current_name = self.service_ui.right_table.item(self.service_ui.right_table.currentRow(), 0).text()
                 volume = int(self.service_ui.right_table.item(self.service_ui.right_table.currentRow(), 1).text())
@@ -278,6 +399,9 @@ class MainWindow(QMainWindow):
 
         @Slot()
         def delete_row(self):
+            """
+            Удалят выбранный предмет из хранилища услуги.
+            """
             current_row = self.service_ui.left_table.currentRow()
             if self.service_ui.left_table.currentColumn() != 2 and current_row != self.service_ui.left_table.rowCount() - 1:
                 item = self.service_storage[self.service_ui.left_table.item(current_row, 0).text()]
@@ -290,6 +414,10 @@ class MainWindow(QMainWindow):
 
         @Slot()
         def change_rate(self, item: QTableWidgetItem):
+            """
+            Обновляет расход материала в услуге и расчитывает себестоимость.
+            :param item: QTableWidgetItem
+            """
             if item.column() == 2 and float(item.text()) != 0:
                 rate = float(item.text())
                 storage_item = self.service_storage[self.service_ui.left_table.item(item.row(), 0).text()]
@@ -306,6 +434,9 @@ class MainWindow(QMainWindow):
                 total.setText(str(amount))
 
         def load_right_table(self):
+            """
+            Загружает имеющиеся предметы на складе в правую таблицу.
+            """
             for item in self.right_storage:
                 row_pos = self.service_ui.right_table.rowCount()
                 self.service_ui.right_table.insertRow(row_pos)
@@ -316,6 +447,10 @@ class MainWindow(QMainWindow):
             self.service_ui.right_table.resizeColumnToContents(0)
 
         def set_total(self):
+            """
+            Обновляет себестоимость услуги.
+            :return:
+            """
             total = 0
             for item in self.service_storage:
                 total += self.service_storage[item].rate_price
@@ -323,6 +458,9 @@ class MainWindow(QMainWindow):
             qitem.setText(f"{total}")
 
         def writeSettings(self):
+            """
+            Сохранение настроек окна.
+            """
             settings = QSettings()
             settings.beginGroup("ServiceForm")
             settings.setValue("size", self.size())
@@ -330,6 +468,9 @@ class MainWindow(QMainWindow):
             settings.endGroup()
 
         def readSettings(self):
+            """
+            Загрузка настроек окна.
+            """
             settings = QSettings()
             settings.beginGroup("ServiceForm")
             self.resize(settings.value("size", QSize(500, 500)))
@@ -391,6 +532,9 @@ class MainWindow(QMainWindow):
             self.close()
 
         def writeSettings(self):
+            """
+            Сохранение настроек окна.
+            """
             settings = QSettings()
             settings.beginGroup("CreateForm")
             settings.setValue("size", self.size())
@@ -398,6 +542,9 @@ class MainWindow(QMainWindow):
             settings.endGroup()
 
         def readSettings(self):
+            """
+            Загрузка настроек окна.
+            """
             settings = QSettings()
             settings.beginGroup("CreateForm")
             self.resize(settings.value("size", QSize(500, 500)))
@@ -456,6 +603,10 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def add_service(self):
+        """
+        Обрабатывает сигнал с кнопки услуг 'добавить', создает окно ServiceForm и подключает соответствующий сигнал к
+        'create_service'
+        """
         self.service_form = self.ServiceForm(self.storage, self.main_ui.list_of_services)
         self.service_form.data_set.connect(self.create_service)
         self.service_form.show()
@@ -463,6 +614,14 @@ class MainWindow(QMainWindow):
     @Slot()
     def create_service(self, name: str, service_price: int, service_storage: dict, cost_price: float,
                        service_used_times: int = 0):
+        """
+        Создает услугу, создает и подключает кнопки в таблице(сделано, откат).
+        :param name: str
+        :param service_price: int
+        :param service_storage: dict
+        :param cost_price: float
+        :param service_used_times: int
+        """
         service = Service(name, service_price, cost_price)
         service.used_times = service_used_times
         service.plus_button.pressed.connect(self.plus)
@@ -484,6 +643,10 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def edit_service(self):
+        """
+        Обрабатывает сигнал с кнопки услуг 'изменить', создает окно ServiceForm и подключает соответствующий сигнал к
+        'edit_service_row'
+        """
         current_row = self.main_ui.list_of_services.currentRow()
         current_column = self.main_ui.list_of_services.currentColumn()
         service = self.services[self.main_ui.list_of_services.item(current_row, 0).text()]
@@ -496,12 +659,25 @@ class MainWindow(QMainWindow):
         self.service_form.show()
 
     @Slot()
-    def edit_service_row(self, name: str, service_price: int, service_storage: dict, cost_price: float, current_row):
+    def edit_service_row(self, name: str, service_price: int, service_storage: dict, cost_price: float,
+                         current_row: int):
+        """
+        Слот вносит изменения в редактируемую услугу.
+        :param name: str
+        :param service_price: int
+        :param service_storage: dict
+        :param cost_price: float
+        :param current_row: int
+        """
         self.delete_service(current_row)
         self.create_service(name, service_price, service_storage, cost_price)
 
     @Slot()
     def delete_service(self, current_row=None):
+        """
+        Данный слот обрабатывает сигнал с кнопки услуг 'удалить' и удаляет процедуру из хранилища и таблицы услуг.
+        :param current_row:
+        """
         table = self.main_ui.list_of_services
         current_row = table.currentRow() if current_row is None else current_row
         service_name = table.item(current_row, 0).text()
@@ -510,12 +686,23 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def add_material(self):
+        """
+        Данный слот обрабатвыет сигнал с кнопки склада 'добавить', создает окно CreateForm и подключает соответсвующий
+        сигнал к слоту 'add_storage_row'.
+        """
         self.create = self.CreateForm(self.storage, self.main_ui.list_of_materials)
         self.create.data_set.connect(self.add_storage_row)
         self.create.show()
 
     @Slot()
-    def add_storage_row(self, name, volume, quantity, price):
+    def add_storage_row(self, name: str, volume: str, quantity: str, price: str):
+        """
+        Данный слот принимает необходимые параметры из CreateForm для внесения нового материала на склад и создает его.
+        :param name: str
+        :param volume: str
+        :param quantity: str
+        :param price: str
+        """
         item = Item(name, int(volume), int(quantity), int(price))
         is_exist = self.storage.add_item(item)
         if isinstance(is_exist, str):
@@ -531,6 +718,10 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def edit_storage_item(self):
+        """
+        Данный слот принимает сигнал с кнопки склада 'изменить' и создает окно CreateForm, а также подключает
+        соответствующий сигнал к слоту 'edit_storage_row' для редактирования параметров материала на складе.
+        """
         try:
             current_name = self.main_ui.list_of_materials.item(self.main_ui.list_of_materials.currentRow(), 0).text()
             current_volume = self.main_ui.list_of_materials.item(self.main_ui.list_of_materials.currentRow(), 1).text()
@@ -551,6 +742,15 @@ class MainWindow(QMainWindow):
     @Slot()
     def edit_storage_row(self, current_name: str, current_volume: str, name: str, volume: str, quantity: str,
                          price: str):
+        """
+        Данный слот осуществляет изменние предмета на складе. Вносит изменния как в таблицу, так и в само хранилище.
+        :param current_name: str
+        :param current_volume: str
+        :param name: str
+        :param volume: str
+        :param quantity: str
+        :param price: str
+        """
         is_exist = self.storage.edit_box(current_name, int(current_volume), name, int(volume), int(quantity),
                                          int(price))
         if isinstance(is_exist, str):
@@ -578,6 +778,9 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def delete_storage_item(self):
+        """
+        Данный слот удаляет предмет со склада.
+        """
         row_now = self.main_ui.list_of_materials.currentRow()
         if row_now != -1:
             current_name = self.main_ui.list_of_materials.item(row_now, 0).text()
@@ -590,13 +793,17 @@ class MainWindow(QMainWindow):
                     del self.services[service].service_storage[current_name]
                     self.services[service].sum_cost_price()
                     service_row = \
-                    self.main_ui.list_of_services.findItems(self.services[service].name, Qt.MatchFixedString)[0].row()
+                        self.main_ui.list_of_services.findItems(self.services[service].name, Qt.MatchFixedString)[
+                            0].row()
                     self.main_ui.list_of_services.item(service_row, 2).setText(str(self.services[service].cost_price))
         else:
             return
 
     @Slot()
     def plus(self):
+        """
+        Данный слот обрабатыват кнопку использования услуги и списывает необходимое количество материалов со склада.
+        """
         service_table = self.main_ui.list_of_services
         current_row = service_table.currentRow()
         service = self.services[service_table.item(current_row, 0).text()]
@@ -610,6 +817,9 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def minus(self):
+        """
+        Данный слот обрабатывает кнопку отката услуги на одно использование назад и возобновляет ресурны на складе.
+        """
         service_table = self.main_ui.list_of_services
         current_row = service_table.currentRow()
         service = self.services[service_table.item(current_row, 0).text()]
@@ -617,19 +827,31 @@ class MainWindow(QMainWindow):
         self.main_ui.list_of_services.item(current_row, 5).setText(f"{service.used_times}")
         self.update_list_storage()
 
-    def msg(self, items):
+    def msg(self, items: Any):
+        """
+        Функция выводит предупреждения о попытке создания уже существующего предмета или же при нехватке материала на
+        услугу.
+        :param items: str or list
+        """
         if isinstance(items, str):
             msg = QMessageBox.warning(self, "Предупреждение", f"{items} уже существуют !")
         elif isinstance(items, list):
             msg = QMessageBox.warning(self, "Предупреждение", f"Недостаточно {items} !")
 
     def update_list_storage(self):
+        """
+        Функция обновляет информацию в таблице склада о текущем количестве имеющихся материалов, а также запускает
+        обновление стоимости материалов.
+        """
         for item in self.storage:
             row = self.main_ui.list_of_materials.findItems(item.name, Qt.MatchFixedString)[0].row()
             self.main_ui.list_of_materials.item(row, 2).setText(f"{item.quantity}")
         self.total_storage_update()
 
     def total_storage_update(self):
+        """
+        Функция обновляет текущую стоимость материалов на складе.
+        """
         self.storage.sum_total_amount()
         item = self.main_ui.total_list.item(0, 1)
         item.setText(f"{self.storage.total_amount} руб")
@@ -637,6 +859,9 @@ class MainWindow(QMainWindow):
         header.setSectionResizeMode(QHeaderView.ResizeToContents)
 
     def writeSettings(self):
+        """
+        Сохранение настроек основного окна и БД приложения.
+        """
         settings = QSettings()
         settings.beginGroup("MainForm")
         settings.setValue("size", self.size())
@@ -646,6 +871,9 @@ class MainWindow(QMainWindow):
         settings.endGroup()
 
     def readSettings(self):
+        """
+        Загрузка настроек основного  окна и БД приложения.
+        """
         settings = QSettings()
         settings.beginGroup("MainForm")
         self.resize(settings.value("size", QSize(500, 500)))
@@ -656,6 +884,9 @@ class MainWindow(QMainWindow):
         settings.endGroup()
 
     def load_table(self):
+        """
+        Загружает отображение материалов на складе в соответствующую таблицу.
+        """
         self.storage.load_storage()
         self.main_ui.total_list.setItem(0, 1, QTableWidgetItem(f"{self.storage.total_amount} руб"))
         self.main_ui.total_list.resizeColumnsToContents()
@@ -670,6 +901,9 @@ class MainWindow(QMainWindow):
         table.resizeColumnToContents(0)
 
     def save_services(self):
+        """
+        Сохраняет текущее хранилище услуг в БД(json).
+        """
         with open("services.json", "wt") as file:
             services_dct = dict()
             for service in self.services:
@@ -677,6 +911,9 @@ class MainWindow(QMainWindow):
             json.dump(services_dct, file)
 
     def load_services(self):
+        """
+        Загружает услуги из БД(json).
+        """
         try:
             with open("services.json", "rt") as file:
                 data = json.load(file)
