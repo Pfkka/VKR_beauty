@@ -199,21 +199,20 @@ class Service:
     показатели.
     """
 
-    def __init__(self, name: str, service_price: int, cost_price: float, used_times: int = 0):
+    def __init__(self, name: str, service_price: int, cost_price: float, used_once: int = 0):
         """
         :param name: str
         :param service_price: int
         :param cost_price: float
-        :param used_times: int
+        :param used_once: int
         """
         self.name = name
         self.service_price = service_price
-        self.cost_price = cost_price  # себестоимость
-        self.net_profit = service_price - cost_price
+        self.cost_price = cost_price  # себестоимостьser
         self.service_storage = dict()
         self.plus_button = QPushButton("Сделать")
         self.minus_button = QPushButton("Откатить")
-        self.used_times = used_times
+        self.used_once = used_once
 
     def add_item(self, item: Item):
         """
@@ -245,7 +244,7 @@ class Service:
             for item in used_items:
                 item.one_use(not flag, storage)
             return empty_items
-        self.used_times += 1 if flag else (-1)
+        self.used_once += 1 if flag else (-1)
 
     def sum_cost_price(self):
         """
@@ -263,7 +262,7 @@ class Service:
         dict_sevice = dict()
         dict_sevice["cost_price"] = self.cost_price
         dict_sevice["service_price"] = self.service_price
-        dict_sevice["service_use"] = self.used_times
+        dict_sevice["service_use"] = self.used_once
         dict_sevice["items"] = dict()
         for item in self.service_storage:
             dict_sevice["items"][item] = {"name": self.service_storage[item].name,
@@ -613,7 +612,7 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def create_service(self, name: str, service_price: int, service_storage: dict, cost_price: float,
-                       service_used_times: int = 0):
+                       service_used_once: int = 0):
         """
         Создает услугу, создает и подключает кнопки в таблице(сделано, откат).
         :param name: str
@@ -623,7 +622,7 @@ class MainWindow(QMainWindow):
         :param service_used_times: int
         """
         service = Service(name, service_price, cost_price)
-        service.used_times = service_used_times
+        service.used_once = service_used_once
         service.plus_button.pressed.connect(self.plus)
         service.minus_button.pressed.connect(self.minus)
         for item in service_storage:
@@ -639,7 +638,7 @@ class MainWindow(QMainWindow):
         table_services.setItem(row_pos, 2, QTableWidgetItem(str(service.cost_price)))
         table_services.setCellWidget(row_pos, 3, service.plus_button)
         table_services.setCellWidget(row_pos, 4, service.minus_button)
-        table_services.setItem(row_pos, 5, QTableWidgetItem(str(service.used_times)))
+        table_services.setItem(row_pos, 5, QTableWidgetItem(str(service.used_once)))
 
     @Slot()
     def edit_service(self):
@@ -651,7 +650,7 @@ class MainWindow(QMainWindow):
         current_column = self.main_ui.list_of_services.currentColumn()
         service = self.services[self.main_ui.list_of_services.item(current_row, 0).text()]
         if current_column == 5:
-            service.used_times = 0
+            service.used_once = 0
             self.main_ui.list_of_services.item(current_row, current_column).setText("0")
             return
         self.service_form = self.ServiceForm(self.storage, self.main_ui.list_of_services, service, current_row)
@@ -812,7 +811,7 @@ class MainWindow(QMainWindow):
             self.msg(empty)
             return
         item = self.main_ui.list_of_services.item(current_row, 5)
-        item.setText(f"{service.used_times}")
+        item.setText(f"{service.used_once}")
         self.update_list_storage()
 
     @Slot()
@@ -824,7 +823,7 @@ class MainWindow(QMainWindow):
         current_row = service_table.currentRow()
         service = self.services[service_table.item(current_row, 0).text()]
         service.use(False, self.storage)
-        self.main_ui.list_of_services.item(current_row, 5).setText(f"{service.used_times}")
+        self.main_ui.list_of_services.item(current_row, 5).setText(f"{service.used_once}")
         self.update_list_storage()
 
     def msg(self, items: Any):
