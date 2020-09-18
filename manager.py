@@ -225,7 +225,7 @@ class Service:
         # if item.quantity == 0:
         #     print(f"{item.name} is empty !!!")
 
-    def use(self, flag: bool, storage):
+    def use(self, flag: bool, storage: Storage):
         """
         В зависимости от флага списывает или начисляет расход материалов услуги. Если недостаточно материала, вохвращает
         список недостающих предметов.
