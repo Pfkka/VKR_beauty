@@ -4,7 +4,7 @@ from typing import Any
 from PySide2.QtGui import QCloseEvent
 from main_form_1 import Ui_MainWindow
 from create_form import Ui_Form
-from create_service_form import Ui_Service_form
+from create_service_form1 import Ui_Service_form
 from PySide2.QtWidgets import QMainWindow, QWidget, QApplication, QTableWidget, QTableWidgetItem, QAbstractItemView, \
     QHeaderView, QPushButton, QMessageBox
 from PySide2.QtCore import Slot, QSettings, QSize, QPoint, Qt, Signal

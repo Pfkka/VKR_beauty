@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'create_service_form.ui'
+## Form generated from reading UI file 'create_service_form1.ui'
 ##
 ## Created by: Qt User Interface Compiler version 5.14.2
 ##
@@ -20,7 +20,7 @@ class Ui_Service_form(object):
     def setupUi(self, Service_form):
         if not Service_form.objectName():
             Service_form.setObjectName(u"Service_form")
-        Service_form.resize(627, 322)
+        Service_form.resize(648, 322)
         self.gridLayout = QGridLayout(Service_form)
         self.gridLayout.setObjectName(u"gridLayout")
         self.horizontalLayout = QHBoxLayout()
@@ -88,22 +88,37 @@ class Ui_Service_form(object):
 
         self.horizontalLayout.addLayout(self.verticalLayout_2)
 
+        self.verticalLayout_4 = QVBoxLayout()
+        self.verticalLayout_4.setObjectName(u"verticalLayout_4")
+        self.left_table_label = QLabel(Service_form)
+        self.left_table_label.setObjectName(u"left_table_label")
+        self.left_table_label.setFont(font1)
+
+        self.verticalLayout_4.addWidget(self.left_table_label)
+
         self.left_table = QTableWidget(Service_form)
         self.left_table.setObjectName(u"left_table")
-        sizePolicy = QSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.left_table.sizePolicy().hasHeightForWidth())
-        self.left_table.setSizePolicy(sizePolicy)
 
-        self.horizontalLayout.addWidget(self.left_table)
+        self.verticalLayout_4.addWidget(self.left_table)
+
+
+        self.horizontalLayout.addLayout(self.verticalLayout_4)
+
+        self.verticalLayout_3 = QVBoxLayout()
+        self.verticalLayout_3.setObjectName(u"verticalLayout_3")
+        self.right_table_label = QLabel(Service_form)
+        self.right_table_label.setObjectName(u"right_table_label")
+        self.right_table_label.setFont(font1)
+
+        self.verticalLayout_3.addWidget(self.right_table_label)
 
         self.right_table = QTableWidget(Service_form)
         self.right_table.setObjectName(u"right_table")
-        sizePolicy.setHeightForWidth(self.right_table.sizePolicy().hasHeightForWidth())
-        self.right_table.setSizePolicy(sizePolicy)
 
-        self.horizontalLayout.addWidget(self.right_table)
+        self.verticalLayout_3.addWidget(self.right_table)
+
+
+        self.horizontalLayout.addLayout(self.verticalLayout_3)
 
 
         self.gridLayout.addLayout(self.horizontalLayout, 0, 0, 1, 1)
@@ -120,5 +135,7 @@ class Ui_Service_form(object):
         self.service_price_label.setText(QCoreApplication.translate("Service_form", u"\u0426\u0435\u043d\u0430 \u0443\u0441\u043b\u0443\u0433\u0438:", None))
         self.addButton.setText(QCoreApplication.translate("Service_form", u"\u041f\u0440\u0438\u043c\u0435\u043d\u0438\u0442\u044c", None))
         self.cancelButton.setText(QCoreApplication.translate("Service_form", u"\u041e\u0442\u043c\u0435\u043d\u0430", None))
+        self.left_table_label.setText(QCoreApplication.translate("Service_form", u"\u0423\u0441\u043b\u0443\u0433\u0430", None))
+        self.right_table_label.setText(QCoreApplication.translate("Service_form", u"\u0421\u043a\u043b\u0430\u0434", None))
     # retranslateUi
 
