@@ -40,7 +40,7 @@ class Item:
         """
         Списывает/начисляет rate.
         :param flag: True if minus rate, False if plus rate.
-        :param storage:
+        :param storage: Storage
         :return: str if quantity is not enough else None
         """
         if self.quantity != storage[self.name][self.nominal].quantity:

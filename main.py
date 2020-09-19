@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 from PySide2.QtWidgets import QApplication
 # from PySide2.QtCore import QTranslator
 from manager import MainWindow
