@@ -130,7 +130,7 @@ class Ui_Service_form(object):
     # setupUi
 
     def retranslateUi(self, Service_form):
-        Service_form.setWindowTitle(QCoreApplication.translate("Service_form", u"Create service", None))
+        Service_form.setWindowTitle(QCoreApplication.translate("Service_form", u"\u0421\u043e\u0437\u0434\u0430\u0442\u044c \u0443\u0441\u043b\u0443\u0433\u0443", None))
         self.service_name_label.setText(QCoreApplication.translate("Service_form", u"\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0443\u0441\u043b\u0443\u0433\u0438:", None))
         self.service_price_label.setText(QCoreApplication.translate("Service_form", u"\u0426\u0435\u043d\u0430 \u0443\u0441\u043b\u0443\u0433\u0438:", None))
         self.addButton.setText(QCoreApplication.translate("Service_form", u"\u041f\u0440\u0438\u043c\u0435\u043d\u0438\u0442\u044c", None))
