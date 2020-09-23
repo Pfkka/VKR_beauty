@@ -128,6 +128,8 @@ class Storage:
         :return:
         """
         try:
+            if len(self._boxes[name]) == 1:
+                del self._boxes[name]
             del self._boxes[name][volume]
         except KeyError:
             print("Item not found")
@@ -185,6 +187,9 @@ class Storage:
         for nominal in self._boxes:
             for item in self._boxes[nominal]:
                 yield self._boxes[nominal][item]
+
+    def __len__(self):
+        return len(self._boxes)
 
     def __getitem__(self, item):
         return self._boxes[item]
