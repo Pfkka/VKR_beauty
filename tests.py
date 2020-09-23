@@ -1,5 +1,4 @@
 import sys
-import os
 import unittest
 from PySide2.QtWidgets import QApplication
 from manager import Service, Storage, Item, MainWindow
@@ -84,6 +83,30 @@ class ServiceTestcase(unittest.TestCase):
         self.assertEqual(service.name, "Some")
         self.assertEqual(service.service_price, 1000)
         self.assertEqual(service.cost_price, 20.0)
+        self.assertEqual(service.used_once, 0)
+
+    def test_add_item_in_service(self):
+        service = Service("Some", 1000, 20.0)
+        item = Item("Cream", 1000, 1, 2000)
+        service.add_item(item)
+        service_item = service.service_storage[item.name]
+        self.assertIsInstance(service_item, Item)
+        self.assertEqual(service_item.name, item.name)
+        self.assertEqual(service_item.price, item.price)
+
+    def test_service_use(self):
+        service = Service("Some", 1000, 20.0)
+        storage = Storage()
+        item1 = Item("Cream", 1000, 1, 2000)
+        item2 = Item("Scrab", 500, 3, 1500)
+        item1.rate = 1001
+        item2.rate = 505
+        service.add_item(item1)
+        service.add_item(item2)
+        storage.add_item(item1)
+        storage.add_item(item2)
+        self.assertIsInstance(service.use(True, storage), list)
+        self.assertEqual(len(service.use(True, storage)), 1)
         self.assertEqual(service.used_once, 0)
 
 
