@@ -6,7 +6,7 @@ from manager import Service, Storage, Item
 
 class ItemTestCase(unittest.TestCase):
 
-    def test_create_item(self):
+    def test_init_item(self):
         item = Item("Cream", 1000, 3, 2000)
         self.assertEqual(item.nominal, 1000)
         self.assertEqual(item.quantity, 3)
