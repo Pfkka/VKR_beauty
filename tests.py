@@ -68,6 +68,12 @@ class StorageTestCase(unittest.TestCase):
         self.assertRaises(KeyError, lambda: storage["Cream"][1000])
         self.assertEqual(len(storage), 0)
 
+    def test_dict_ser(self):
+        storage = Storage()
+        item = Item("Cream", 1000, 1, 2000)
+        storage.add_item(item)
+        self.assertIsInstance(storage.to_dict(), dict)
+
 
 class ServiceTestcase(unittest.TestCase):
 
@@ -79,11 +85,7 @@ class ServiceTestcase(unittest.TestCase):
         self.assertEqual(service.used_once, 0)
 
 
-def main(argv):
-    app = QApplication(argv)
-    unittest.main()
-    return app.exec_()
-
-
 if __name__ == "__main__":
-    main(sys.argv)
+    app = QApplication(sys.argv)
+    unittest.main()
+    app.exec_()
