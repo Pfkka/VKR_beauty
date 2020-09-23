@@ -5,7 +5,9 @@ from manager import Service, Storage, Item
 
 
 class ItemTestCase(unittest.TestCase):
-
+    """
+    Тестирование класса Item на корректность: инизиализации, присвоения расхода и списания расхода.
+    """
     def test_init_item(self):
         item = Item("Cream", 1000, 3, 2000)
         self.assertEqual(item.nominal, 1000)
@@ -35,6 +37,9 @@ class ItemTestCase(unittest.TestCase):
 
 
 class StorageTestCase(unittest.TestCase):
+    """
+    Тестирование класса склада на корректность: добавления, изменнения, удаления предметов и сериализации хранилища.
+    """
 
     def test_add_item(self):
         storage = Storage()
@@ -80,7 +85,10 @@ class StorageTestCase(unittest.TestCase):
         self.assertEqual(storage.to_dict(), test_dict)
 
 
-class ServiceTestcase(unittest.TestCase):
+class ServiceTestCase(unittest.TestCase):
+    """
+    Тестирование класса услушги на корректность: инициализации, добавления предмета и списания расходов с предметов.
+    """
     APP = QApplication(sys.argv)
 
     def test_init(self):
