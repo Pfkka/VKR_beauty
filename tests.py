@@ -1,7 +1,7 @@
 import sys
 import unittest
 from PySide2.QtWidgets import QApplication
-from manager import Service, Storage, Item, MainWindow
+from manager import Service, Storage, Item
 
 
 class ItemTestCase(unittest.TestCase):
