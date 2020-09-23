@@ -11,7 +11,6 @@ def main(argv):
     app.setOrganizationName("Egor_Nezhensky")
     w = MainWindow()
     w.show()
-    #
     # t = QTranslator(app)
     # t.load('translations/ru_RU', os.path.dirname(__file__))
     # app.installTranslator(t)

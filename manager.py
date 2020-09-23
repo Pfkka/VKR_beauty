@@ -32,7 +32,7 @@ class Item:
         self.nominal = nominal_volume
         self.quantity = quantity
         self.price = price
-        self.rt = rate
+        self.__rt = rate
         self.rate_price = rate_price if rate_price is not None else 0
         self.current_volume = nominal_volume if not current_volume else current_volume
 
@@ -60,19 +60,19 @@ class Item:
             if self.rate + self.current_volume <= self.nominal:
                 self.current_volume += self.rate
             else:
-                rng = self.rate + self.current_volume - self.nominal  # rng >0
+                rng = self.rate + self.current_volume - self.nominal  # rng > 0
                 self.current_volume = rng
                 self.quantity += 1
                 storage[self.name][self.nominal].quantity += 1
 
     @property
     def rate(self):
-        return self.rt
+        return self.__rt
 
     @rate.setter
     def rate(self, rate):
-        self.rt = rate
-        self.rate_price = (self.rt / self.nominal) * self.price
+        self.__rt = rate
+        self.rate_price = (self.__rt / self.nominal) * self.price
 
     def __str__(self):
         return f"Name: {self.name}\n" \
