@@ -1,4 +1,5 @@
 import sys
+import os
 import unittest
 from PySide2.QtWidgets import QApplication
 from manager import Service, Storage, Item, MainWindow
@@ -76,6 +77,7 @@ class StorageTestCase(unittest.TestCase):
 
 
 class ServiceTestcase(unittest.TestCase):
+    APP = QApplication(sys.argv)
 
     def test_init(self):
         service = Service("Some", 1000, 20.0)
@@ -86,6 +88,4 @@ class ServiceTestcase(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
     unittest.main()
-    app.exec_()
