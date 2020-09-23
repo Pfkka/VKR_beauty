@@ -71,8 +71,13 @@ class StorageTestCase(unittest.TestCase):
     def test_dict_ser(self):
         storage = Storage()
         item = Item("Cream", 1000, 1, 2000)
+        test_dict = dict()
+        test_dict[f"{item.name}"] = {
+            item.nominal: {"name": item.name, "nominal_volume": item.nominal, "quantity": item.quantity,
+                           "price": item.price}}
         storage.add_item(item)
         self.assertIsInstance(storage.to_dict(), dict)
+        self.assertEqual(storage.to_dict(), test_dict)
 
 
 class ServiceTestcase(unittest.TestCase):
