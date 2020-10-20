@@ -123,3 +123,12 @@ venv.bak/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+storage.json
+services.json
+problems.txt
+Beauty.spec
+.dist
+.build
+.html/
+model.mdj
