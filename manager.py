@@ -2,9 +2,9 @@ import json
 from copy import copy
 from typing import Any
 from PySide2.QtGui import QCloseEvent
-from main_form_1 import Ui_MainWindow
-from create_form import Ui_Form
-from create_service_form1 import Ui_Service_form
+from forms.main_form_1 import Ui_MainWindow
+from forms.create_form import Ui_Form
+from forms.create_service_form1 import Ui_Service_form
 from PySide2.QtWidgets import QMainWindow, QWidget, QApplication, QTableWidget, QTableWidgetItem, QAbstractItemView, \
     QHeaderView, QPushButton, QMessageBox
 from PySide2.QtCore import Slot, QSettings, QSize, QPoint, Qt, Signal
@@ -18,7 +18,7 @@ class Item:
     def __init__(self, name: str, nominal_volume: int, quantity: int, price: int, rate=0, rate_price=None,
                  current_volume=None):
         """
-        Для создания предмета необходимо подать его имя, номинальный объем упаковки, количество таких упаковок, цену за
+        Для создания предмета необходимо подать: имя, номинальный объем упаковки, количество таких упаковок, цену за
         единицу. При необходимости можно задать расход на услугу, себестоимость за 1 применение и текущий объем пачки.
         :param name: str
         :param nominal_volume: int

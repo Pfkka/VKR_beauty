@@ -132,3 +132,4 @@ Beauty.spec
 .build
 .html/
 model.mdj
+*.ui
