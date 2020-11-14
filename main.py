@@ -20,5 +20,9 @@ def main(argv):
 
 if __name__ == '__main__':
     os.environ['QT_PATH_PLATFORM_PLUGIN_PATH'] = './platforms'
+    try:
+        os.mkdir("beauty_data")
+    except FileExistsError:
+        pass
     exit_code = main(sys.argv)
     sys.exit(exit_code)

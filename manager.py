@@ -1,4 +1,5 @@
 import json
+import os
 from copy import copy
 from typing import Any
 from PySide2.QtGui import QCloseEvent
@@ -162,7 +163,7 @@ class Storage:
         """
         Сохраняет склад в БД(json).
         """
-        with open("storage.json", "wt") as file:
+        with open("beauty_data/storage.json", "wt") as file:
             dict_storage = self.to_dict()
             json.dump(dict_storage, file)
 
@@ -171,7 +172,7 @@ class Storage:
         Загружает склад из БД(json).
         """
         try:
-            with open("storage.json", "rt") as file:
+            with open("beauty_data/storage.json", "rt") as file:
                 data = json.load(file)
                 for itm in data:
                     for nominal in data[itm]:
@@ -180,7 +181,7 @@ class Storage:
                         self.add_item(item)
             self.sum_total_amount()
         except FileNotFoundError:
-            with open("storage.json", "wt") as file:
+            with open("beauty_data/storage.json", "wt") as file:
                 pass
 
     def __iter__(self):
@@ -908,7 +909,7 @@ class MainWindow(QMainWindow):
         """
         Сохраняет текущее хранилище услуг в БД(json).
         """
-        with open("services.json", "wt") as file:
+        with open("beauty_data/services.json", "wt") as file:
             services_dct = dict()
             for service in self.services:
                 services_dct[service] = self.services[service].service_to_dict()
@@ -919,7 +920,7 @@ class MainWindow(QMainWindow):
         Загружает услуги из БД(json).
         """
         try:
-            with open("services.json", "rt") as file:
+            with open("beauty_data/services.json", "rt") as file:
                 data = json.load(file)
                 for service in data:
                     service_name = service
@@ -936,7 +937,7 @@ class MainWindow(QMainWindow):
                     self.create_service(service_name, service_price, items, service_cost_price, service_used_times)
 
         except FileNotFoundError:
-            with open("services.json", "wt") as file:
+            with open("beauty_data/services.json", "wt") as file:
                 pass
 
     def closeEvent(self, event: QCloseEvent):
